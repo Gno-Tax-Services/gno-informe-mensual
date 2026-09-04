@@ -32,6 +32,10 @@ export default function ReportActions({
   );
   const [report, setReport] = useState<Report | null>(null);
   const [script, setScript] = useState<string | null>(null);
+  const [videoStatus, setVideoStatus] = useState<'idle' | 'processing' | 'ready' | 'error'>(
+    'idle'
+  );
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const [periodo, setPeriodo] = useState(defaultPeriodo());
   const [income, setIncome] = useState('');
@@ -90,6 +94,59 @@ export default function ReportActions({
       if (!res.ok) throw new Error(data.error || 'Error al generar el guion');
       setScript(data.script);
       setMsg({ type: 'ok', text: 'Guion generado.' });
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generarVideo() {
+    if (!report) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/reports/video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: report.id }),
+      });
+      const data = await res.json();
+      if (res.status === 501) {
+        setMsg({ type: 'info', text: 'Falta configurar HeyGen (HEYGEN_API_KEY en Vercel).' });
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || 'Error al generar el video');
+      setVideoStatus('processing');
+      setMsg({ type: 'info', text: 'Video en proceso en HeyGen (puede tardar unos minutos).' });
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function actualizarVideo() {
+    if (!report) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/reports/video/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: report.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al consultar el estado');
+      setVideoStatus(data.status);
+      if (data.status === 'ready' && data.url) {
+        setVideoUrl(data.url);
+        setMsg({ type: 'ok', text: '¡Video listo!' });
+      } else if (data.status === 'error') {
+        setMsg({ type: 'err', text: data.error || 'El video falló en HeyGen.' });
+      } else {
+        setMsg({ type: 'info', text: 'Todavía en proceso…' });
+      }
     } catch (e: any) {
       setMsg({ type: 'err', text: e.message });
     } finally {
@@ -178,6 +235,48 @@ export default function ReportActions({
         />
       )}
 
+      {videoStatus !== 'idle' && (
+        <div className="mt-2 flex items-center justify-between rounded border border-white/10 bg-navy px-2 py-1 text-[11px]">
+          <span className="text-[#7FA3C4]">
+            Video:{' '}
+            <span
+              className={
+                videoStatus === 'ready'
+                  ? 'text-green-300'
+                  : videoStatus === 'error'
+                    ? 'text-red-300'
+                    : 'text-gold'
+              }
+            >
+              {videoStatus === 'ready'
+                ? 'listo'
+                : videoStatus === 'error'
+                  ? 'error'
+                  : 'en proceso'}
+            </span>
+          </span>
+          {videoStatus === 'ready' && videoUrl ? (
+            <a
+              href={videoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gold underline"
+            >
+              Ver video
+            </a>
+          ) : videoStatus === 'processing' ? (
+            <button
+              type="button"
+              onClick={actualizarVideo}
+              disabled={busy}
+              className="text-gold underline disabled:opacity-60"
+            >
+              Actualizar estado
+            </button>
+          ) : null}
+        </div>
+      )}
+
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {!report ? (
           <button
@@ -198,6 +297,16 @@ export default function ReportActions({
             >
               {busy ? '…' : script ? 'Regenerar guion' : 'Generar guion'}
             </button>
+            {script && videoStatus === 'idle' && (
+              <button
+                type="button"
+                onClick={generarVideo}
+                disabled={busy}
+                className="flex-1 rounded border border-gold/50 px-3 py-1.5 text-xs font-medium text-gold transition hover:bg-gold/10 disabled:opacity-60"
+              >
+                {busy ? '…' : 'Generar video'}
+              </button>
+            )}
             <button
               type="button"
               onClick={enviarInforme}
@@ -214,6 +323,8 @@ export default function ReportActions({
             setOpen(false);
             setReport(null);
             setScript(null);
+            setVideoStatus('idle');
+            setVideoUrl(null);
             setMsg(null);
           }}
           className="rounded border border-white/15 px-2 py-1.5 text-xs text-[#7FA3C4] hover:text-white"
