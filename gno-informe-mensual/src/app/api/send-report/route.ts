@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { sendEmailViaGmail } from '@/lib/gmail';
+import { sendEmailViaGmail, isGmailSenderConfigured } from '@/lib/gmail';
 import { buildReportEmail } from '@/lib/email-template';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
@@ -12,10 +12,22 @@ const supabase = createClient(
 );
 
 export async function POST(req: NextRequest) {
-  // Auth check — must be logged in as GNO staff
+  // Auth check — must be logged in as GNO staff (la allowlist se aplica en
+  // el callback signIn de NextAuth, así que basta con que exista sesión).
   const session = await getServerSession(authOptions);
-  if (!session?.accessToken) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // El envío usa una credencial de Gmail dedicada, no el token del login.
+  if (!isGmailSenderConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          'Gmail sender no configurado. Define GMAIL_SENDER_REFRESH_TOKEN en Vercel.',
+      },
+      { status: 501 }
+    );
   }
 
   const { clientId, reportId } = await req.json();
@@ -61,12 +73,7 @@ export async function POST(req: NextRequest) {
 
   const subject = `Informe Financiero — ${client.nombre_compania} · ${report.periodo}`;
 
-  await sendEmailViaGmail(
-    session.accessToken as string,
-    client.email,
-    subject,
-    html
-  );
+  await sendEmailViaGmail(client.email, subject, html);
 
   // Log the send
   await supabase.from('email_logs').insert({
