@@ -31,6 +31,7 @@ export default function ReportActions({
     null
   );
   const [report, setReport] = useState<Report | null>(null);
+  const [script, setScript] = useState<string | null>(null);
 
   const [periodo, setPeriodo] = useState(defaultPeriodo());
   const [income, setIncome] = useState('');
@@ -61,6 +62,34 @@ export default function ReportActions({
           data.report.net_income
         ).toLocaleString()}, Margen: ${data.report.profit_margin}%).`,
       });
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generarGuion() {
+    if (!report) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/reports/script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: report.id }),
+      });
+      const data = await res.json();
+      if (res.status === 501) {
+        setMsg({
+          type: 'info',
+          text: 'Falta configurar la narrativa (ANTHROPIC_API_KEY en Vercel).',
+        });
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || 'Error al generar el guion');
+      setScript(data.script);
+      setMsg({ type: 'ok', text: 'Guion generado.' });
     } catch (e: any) {
       setMsg({ type: 'err', text: e.message });
     } finally {
@@ -140,7 +169,16 @@ export default function ReportActions({
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-2">
+      {script && (
+        <textarea
+          readOnly
+          value={script}
+          rows={6}
+          className="mt-2 w-full resize-y rounded border border-white/15 bg-navy px-2 py-1 text-[11px] leading-snug text-[#B9CBDD]"
+        />
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {!report ? (
           <button
             type="button"
@@ -151,20 +189,31 @@ export default function ReportActions({
             {busy ? 'Creando…' : 'Crear informe'}
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={enviarInforme}
-            disabled={busy}
-            className="flex-1 rounded bg-gold px-3 py-1.5 text-xs font-medium text-navy transition hover:bg-gold/90 disabled:opacity-60"
-          >
-            {busy ? 'Enviando…' : 'Enviar por email'}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={generarGuion}
+              disabled={busy}
+              className="flex-1 rounded border border-gold/50 px-3 py-1.5 text-xs font-medium text-gold transition hover:bg-gold/10 disabled:opacity-60"
+            >
+              {busy ? '…' : script ? 'Regenerar guion' : 'Generar guion'}
+            </button>
+            <button
+              type="button"
+              onClick={enviarInforme}
+              disabled={busy}
+              className="flex-1 rounded bg-gold px-3 py-1.5 text-xs font-medium text-navy transition hover:bg-gold/90 disabled:opacity-60"
+            >
+              {busy ? '…' : 'Enviar por email'}
+            </button>
+          </>
         )}
         <button
           type="button"
           onClick={() => {
             setOpen(false);
             setReport(null);
+            setScript(null);
             setMsg(null);
           }}
           className="rounded border border-white/15 px-2 py-1.5 text-xs text-[#7FA3C4] hover:text-white"
