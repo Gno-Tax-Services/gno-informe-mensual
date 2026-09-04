@@ -7,7 +7,12 @@ interface ReportEmailVars {
 }
 
 export function buildReportEmail(vars: ReportEmailVars): string {
-  const appUrl = process.env.NEXTAUTH_URL ?? 'https://app.gnotaxservices.com';
+  // `||` (no `??`) para atrapar también string vacío; fallback = dominio real.
+  const appUrl = (
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    'https://gno-informe-mensual.vercel.app'
+  ).replace(/\/+$/, '');
   const calLink = process.env.GNO_CAL_LINK ?? 'https://cal.com/gno';
   const phone = process.env.GNO_PHONE ?? '504 896 0276';
   const website = process.env.GNO_WEBSITE ?? 'https://www.gnotaxservices.com';
