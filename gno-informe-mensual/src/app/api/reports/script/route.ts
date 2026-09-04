@@ -12,23 +12,42 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Genera (o regenera) el guion del video para un informe existente.
+// Guarda el guion de un informe. Dos modos:
+//  - Manual: si el body trae `script`, se guarda tal cual (no usa Claude).
+//  - Automático: si no trae `script`, se genera con Claude (requiere ANTHROPIC_API_KEY).
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const body = await req.json();
+  const reportId = body.reportId;
+  const manualScript =
+    typeof body.script === 'string' && body.script.trim() ? body.script.trim() : null;
+
+  if (!reportId) {
+    return NextResponse.json({ error: 'reportId es requerido' }, { status: 400 });
+  }
+
+  // Modo manual: guarda el guion que escribió el usuario, sin llamar a Claude.
+  if (manualScript) {
+    const { error: mErr } = await supabase
+      .from('reports')
+      .update({ script: manualScript, script_generated_at: new Date().toISOString() })
+      .eq('id', reportId);
+    if (mErr) {
+      return NextResponse.json({ error: mErr.message }, { status: 500 });
+    }
+    return NextResponse.json({ script: manualScript });
+  }
+
+  // Modo automático (Claude).
   if (!isNarrativeConfigured()) {
     return NextResponse.json(
       { error: 'Narrativa no configurada. Define ANTHROPIC_API_KEY en Vercel.' },
       { status: 501 }
     );
-  }
-
-  const { reportId } = await req.json();
-  if (!reportId) {
-    return NextResponse.json({ error: 'reportId es requerido' }, { status: 400 });
   }
 
   // Informe + cliente (join manual porque son dos tablas).

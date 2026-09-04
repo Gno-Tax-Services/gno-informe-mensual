@@ -31,7 +31,8 @@ export default function ReportActions({
     null
   );
   const [report, setReport] = useState<Report | null>(null);
-  const [script, setScript] = useState<string | null>(null);
+  const [script, setScript] = useState('');
+  const [scriptSaved, setScriptSaved] = useState(false);
   const [videoStatus, setVideoStatus] = useState<'idle' | 'processing' | 'ready' | 'error'>(
     'idle'
   );
@@ -93,7 +94,29 @@ export default function ReportActions({
       }
       if (!res.ok) throw new Error(data.error || 'Error al generar el guion');
       setScript(data.script);
-      setMsg({ type: 'ok', text: 'Guion generado.' });
+      setScriptSaved(true);
+      setMsg({ type: 'ok', text: 'Guion generado y guardado.' });
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function guardarGuion() {
+    if (!report || !script.trim()) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/reports/script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: report.id, script }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al guardar el guion');
+      setScriptSaved(true);
+      setMsg({ type: 'ok', text: 'Guion guardado.' });
     } catch (e: any) {
       setMsg({ type: 'err', text: e.message });
     } finally {
@@ -226,13 +249,25 @@ export default function ReportActions({
         </div>
       )}
 
-      {script && (
-        <textarea
-          readOnly
-          value={script}
-          rows={6}
-          className="mt-2 w-full resize-y rounded border border-white/15 bg-navy px-2 py-1 text-[11px] leading-snug text-[#B9CBDD]"
-        />
+      {report && (
+        <label className="mt-2 block">
+          <span className="text-[10px] uppercase tracking-wide text-[#7FA3C4]">
+            Guion (escríbelo o genéralo con IA)
+          </span>
+          <textarea
+            value={script}
+            onChange={(e) => {
+              setScript(e.target.value);
+              setScriptSaved(false);
+            }}
+            rows={6}
+            placeholder="Escribe aquí el guion del video, o usa 'Generar guion' si tienes ANTHROPIC_API_KEY…"
+            className="mt-0.5 w-full resize-y rounded border border-white/15 bg-navy px-2 py-1 text-[11px] leading-snug text-white"
+          />
+          {script.trim() && !scriptSaved && (
+            <span className="text-[10px] text-gold">Cambios sin guardar</span>
+          )}
+        </label>
       )}
 
       {videoStatus !== 'idle' && (
@@ -289,15 +324,25 @@ export default function ReportActions({
           </button>
         ) : (
           <>
+            {script.trim() && !scriptSaved && (
+              <button
+                type="button"
+                onClick={guardarGuion}
+                disabled={busy}
+                className="flex-1 rounded bg-gold px-3 py-1.5 text-xs font-medium text-navy transition hover:bg-gold/90 disabled:opacity-60"
+              >
+                {busy ? '…' : 'Guardar guion'}
+              </button>
+            )}
             <button
               type="button"
               onClick={generarGuion}
               disabled={busy}
               className="flex-1 rounded border border-gold/50 px-3 py-1.5 text-xs font-medium text-gold transition hover:bg-gold/10 disabled:opacity-60"
             >
-              {busy ? '…' : script ? 'Regenerar guion' : 'Generar guion'}
+              {busy ? '…' : script.trim() ? 'Regenerar con IA' : 'Generar con IA'}
             </button>
-            {script && videoStatus === 'idle' && (
+            {scriptSaved && videoStatus === 'idle' && (
               <button
                 type="button"
                 onClick={generarVideo}
@@ -322,7 +367,8 @@ export default function ReportActions({
           onClick={() => {
             setOpen(false);
             setReport(null);
-            setScript(null);
+            setScript('');
+            setScriptSaved(false);
             setVideoStatus('idle');
             setVideoUrl(null);
             setMsg(null);
