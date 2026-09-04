@@ -5,7 +5,8 @@ import GoogleProvider from 'next-auth/providers/google';
 // Configurable en Vercel con GNO_ALLOWED_EMAILS (separados por coma).
 // Por defecto, solo el personal conocido de GNO.
 const ALLOWED_EMAILS = (
-  process.env.GNO_ALLOWED_EMAILS ?? 'gnotbc@gmail.com,jgonzalez@gnotbc.com'
+  process.env.GNO_ALLOWED_EMAILS ??
+  'gnotbc@gmail.com,jgonzalez@gnotbc.com,jeiver@gnotax.com'
 )
   .split(',')
   .map((e) => e.trim().toLowerCase())

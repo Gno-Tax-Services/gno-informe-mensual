@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { createClient } from '@supabase/supabase-js';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import SignOutButton from './SignOutButton';
+import ReportActions from './ReportActions';
 
 // Siempre dinámico: depende de la sesión (cookies).
 export const dynamic = 'force-dynamic';
@@ -127,15 +128,10 @@ export default async function AdminPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      disabled
-                      title="Disponible en el siguiente paso (generación de informes)"
-                      className="cursor-not-allowed rounded-lg border border-gold/40 px-3 py-1.5 text-xs text-gold/60"
-                    >
-                      Generar informe
-                    </button>
+                  <td className="px-4 py-3 text-right align-top">
+                    <div className="flex justify-end">
+                      <ReportActions clientId={c.id} compania={c.nombre_compania} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -144,7 +140,9 @@ export default async function AdminPage() {
         </div>
 
         <p className="mt-4 text-xs text-[#7FA3C4]">
-          La generación y envío de informes se conecta en el siguiente paso.
+          "Generar informe" crea el reporte del mes con sus métricas. El envío por
+          email requiere configurar <code className="text-gold">GMAIL_SENDER_REFRESH_TOKEN</code>;
+          el video HeyGen y la narrativa se agregan en el siguiente paso.
         </p>
       </div>
     </main>
