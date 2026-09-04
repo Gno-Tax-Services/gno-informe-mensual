@@ -53,9 +53,12 @@ export default async function AdminPage() {
       <header className="border-b border-white/10">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-gold">
-              <span className="font-serif text-sm font-bold text-gold">GNO</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/gno-logo.png"
+              alt="GNO"
+              className="h-10 w-10 object-contain"
+            />
             <div>
               <h1 className="font-serif text-lg leading-tight">Informe Mensual</h1>
               <p className="text-xs text-[#7FA3C4]">Panel de administración</p>

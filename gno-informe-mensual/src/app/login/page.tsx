@@ -32,9 +32,12 @@ function LoginContent() {
       <div className="w-full max-w-sm">
         {/* Marca GNO */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full border-2 border-gold mb-4">
-            <span className="font-serif text-gold text-2xl font-bold tracking-wide">GNO</span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/gno-logo.png"
+            alt="GNO Tax & Business Center"
+            className="mx-auto mb-3 h-28 w-28 object-contain drop-shadow"
+          />
           <h1 className="text-white font-serif text-2xl">Informe Mensual</h1>
           <p className="text-[#7FA3C4] mt-1 text-sm">Portal de administración</p>
         </div>
