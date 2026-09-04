@@ -58,7 +58,7 @@ export default function ReportActions({
           totalExpenses: expenses,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}) as any);
       if (!res.ok) throw new Error(data.error || 'Error al crear el informe');
       setReport(data.report);
       setMsg({
@@ -84,7 +84,7 @@ export default function ReportActions({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reportId: report.id }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}) as any);
       if (res.status === 501) {
         setMsg({
           type: 'info',
@@ -113,7 +113,7 @@ export default function ReportActions({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reportId: report.id, script }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}) as any);
       if (!res.ok) throw new Error(data.error || 'Error al guardar el guion');
       setScriptSaved(true);
       setMsg({ type: 'ok', text: 'Guion guardado.' });
@@ -134,7 +134,7 @@ export default function ReportActions({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reportId: report.id }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}) as any);
       if (res.status === 501) {
         setMsg({ type: 'info', text: 'Falta configurar HeyGen (HEYGEN_API_KEY en Vercel).' });
         return;
@@ -159,7 +159,7 @@ export default function ReportActions({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reportId: report.id }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}) as any);
       if (!res.ok) throw new Error(data.error || 'Error al consultar el estado');
       setVideoStatus(data.status);
       if (data.status === 'ready' && data.url) {
@@ -187,7 +187,7 @@ export default function ReportActions({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clientId, reportId: report.id }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}) as any);
       if (res.status === 501) {
         setMsg({
           type: 'info',
