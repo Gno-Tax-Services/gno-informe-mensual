@@ -1,7 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
-import { signIn } from 'next-auth/react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 // Mensajes de error legibles según el código que NextAuth agrega a la URL.
@@ -17,6 +16,16 @@ function LoginContent() {
   const params = useSearchParams();
   const error = params.get('error');
   const callbackUrl = params.get('callbackUrl') || '/admin';
+  const [loading, setLoading] = useState(false);
+
+  // Import dinámico: next-auth/react solo se carga en el navegador al hacer
+  // clic, así NO se evalúa durante el prerender del build (evita el
+  // "TypeError: Invalid URL" de parseUrl cuando NEXTAUTH_URL llega vacío).
+  async function handleGoogle() {
+    setLoading(true);
+    const { signIn } = await import('next-auth/react');
+    signIn('google', { callbackUrl });
+  }
 
   return (
     <main className="min-h-screen bg-navy flex items-center justify-center px-4">
@@ -43,11 +52,12 @@ function LoginContent() {
 
           <button
             type="button"
-            onClick={() => signIn('google', { callbackUrl })}
-            className="w-full flex items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy"
+            onClick={handleGoogle}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-100 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy"
           >
             <GoogleIcon />
-            Continuar con Google
+            {loading ? 'Conectando…' : 'Continuar con Google'}
           </button>
 
           <p className="mt-4 text-center text-xs text-[#7FA3C4]">
