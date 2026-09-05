@@ -42,6 +42,42 @@ export default function ReportActions({
   const [income, setIncome] = useState('');
   const [cogs, setCogs] = useState('');
   const [expenses, setExpenses] = useState('');
+  const [mesLabel, setMesLabel] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  // Importa el P&L (PDF) del cliente desde Google Drive y rellena los montos.
+  async function importarDrive() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/import-drive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company: compania, monthLabel: mesLabel, periodo }),
+      });
+      const data = await res.json().catch(() => ({}) as any);
+      if (res.status === 501) {
+        setMsg({ type: 'info', text: data.error || 'Falta configurar Drive/Anthropic.' });
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || 'Error importando de Drive');
+      if (data.totalIncome != null) setIncome(String(data.totalIncome));
+      if (data.totalCogs != null) setCogs(String(data.totalCogs));
+      if (data.totalExpenses != null) setExpenses(String(data.totalExpenses));
+      setMsg({
+        type: 'ok',
+        text: `Importado de ${data.source}: Ingresos $${Number(
+          data.totalIncome
+        ).toLocaleString()}, Utilidad neta $${Number(data.netIncome).toLocaleString()}. Revisa y crea el informe.`,
+      });
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function crearInforme() {
     setBusy(true);
@@ -234,6 +270,31 @@ export default function ReportActions({
         <NumberField label="COGS" value={cogs} onChange={setCogs} />
         <NumberField label="Gastos" value={expenses} onChange={setExpenses} />
       </div>
+
+      {!report && (
+        <div className="mt-2 flex items-end gap-2">
+          <label className="flex-1">
+            <span className="text-[10px] uppercase tracking-wide text-[#7FA3C4]">
+              Mes en Drive
+            </span>
+            <input
+              value={mesLabel}
+              onChange={(e) => setMesLabel(e.target.value)}
+              placeholder="2026-09"
+              className="mt-0.5 w-full rounded border border-white/15 bg-navy px-2 py-1 text-xs text-white"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={importarDrive}
+            disabled={busy}
+            title="Lee el P&L (PDF) del cliente desde Google Drive y rellena los montos"
+            className="rounded border border-gold/50 px-3 py-1.5 text-xs font-medium text-gold transition hover:bg-gold/10 disabled:opacity-60"
+          >
+            {busy ? '…' : 'Importar de Drive'}
+          </button>
+        </div>
+      )}
 
       {msg && (
         <div
