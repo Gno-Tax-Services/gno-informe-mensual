@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import SignOutButton from './SignOutButton';
 import ReportActions from './ReportActions';
+import SyncClientsButton from './SyncClientsButton';
 
 // Siempre dinámico: depende de la sesión (cookies).
 export const dynamic = 'force-dynamic';
@@ -84,6 +85,7 @@ export default async function AdminPage() {
 
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-serif text-xl">Clientes</h2>
+          <SyncClientsButton />
         </div>
 
         {error && (
