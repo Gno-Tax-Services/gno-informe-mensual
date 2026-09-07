@@ -68,11 +68,17 @@ export async function POST(req: NextRequest) {
       videoUrl: report.video_url,
       magicToken,
     });
-    const subject = `Informe Financiero — ${client.nombre_compania} · ${report.periodo}`;
+    // MODO PRUEBA: si GNO_TEST_EMAIL está definido, TODOS los correos van a esa
+    // dirección (no a los clientes reales). Quitar/vaciar esa env var = producción.
+    const testEmail = process.env.GNO_TEST_EMAIL?.trim();
+    const recipient = testEmail || client.email;
+    const subject = testEmail
+      ? `[PRUEBA → ${client.email}] Informe Financiero — ${client.nombre_compania} · ${report.periodo}`
+      : `Informe Financiero — ${client.nombre_compania} · ${report.periodo}`;
 
     // Envío por Gmail — capturamos el error real para poder diagnosticarlo.
     try {
-      await sendEmailViaGmail(client.email, subject, html);
+      await sendEmailViaGmail(recipient, subject, html);
     } catch (e: any) {
       const detail =
         e?.response?.data?.error?.message ||
