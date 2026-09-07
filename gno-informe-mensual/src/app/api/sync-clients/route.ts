@@ -59,13 +59,16 @@ export async function POST() {
       );
     }
 
-    // Deduplica por correo (el upsert falla si el lote trae emails repetidos).
-    const deduped = Array.from(new Map(rows.map((r) => [r.email, r])).values());
+    // Deduplica por (compañía + correo). Un correo puede tener varias compañías,
+    // y una compañía varios contactos; lo único que no se repite es el par.
+    const deduped = Array.from(
+      new Map(rows.map((r) => [`${r.nombre_compania.toLowerCase()}||${r.email}`, r])).values()
+    );
     const duplicates = rows.length - deduped.length;
 
     const { error } = await supabase
       .from('clients')
-      .upsert(deduped, { onConflict: 'email' });
+      .upsert(deduped, { onConflict: 'nombre_compania,email' });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
