@@ -128,15 +128,27 @@ export async function readClientList(spreadsheetId: string): Promise<DriveClient
   if (rows.length < 2) return [];
 
   const header = rows[0].map((h) => String(h).toLowerCase().trim());
-  const idx = (aliases: string[]) =>
-    header.findIndex((h) => aliases.some((a) => h.includes(a)));
+  const idx = (aliases: string[], except: number[] = []) =>
+    header.findIndex((h, i) => !except.includes(i) && aliases.some((a) => h.includes(a)));
+
+  // Orden importa: primero las columnas inequívocas, luego dueño, luego
+  // compañía excluyendo las ya asignadas (evita que "Name" vs "Client Name"
+  // se confundan, ya que ambos contienen "name").
+  const emailIdx = idx(['email', 'correo', 'e-mail', 'mail']);
+  const telIdx = idx(['telefono', 'teléfono', 'phone', 'whatsapp', 'celular']);
+  const idiomaIdx = idx(['idioma', 'language', 'lang']);
+  const ownerIdx = idx(['client name', 'cliente', 'dueño', 'dueno', 'owner', 'contacto', 'client']);
+  const companyIdx = idx(
+    ['name', 'nombre', 'company', 'compañía', 'compania', 'empresa', 'business', 'razón social', 'razon social'],
+    [ownerIdx, emailIdx, telIdx, idiomaIdx].filter((n) => n >= 0)
+  );
 
   const ci = {
-    compania: idx(['compañía', 'compania', 'company']),
-    nombre: idx(['nombre', 'name', 'cliente', 'client']),
-    email: idx(['correo', 'email', 'e-mail']),
-    telefono: idx(['teléfono', 'telefono', 'phone', 'whatsapp']),
-    idioma: idx(['idioma', 'language', 'lang']),
+    compania: companyIdx,
+    nombre: ownerIdx,
+    email: emailIdx,
+    telefono: telIdx,
+    idioma: idiomaIdx,
   };
 
   return rows.slice(1).map((r) => ({

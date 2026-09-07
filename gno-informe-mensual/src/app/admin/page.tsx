@@ -14,6 +14,8 @@ type Client = {
   nombre_dueno: string;
   nombre_compania: string;
   email: string;
+  telefono: string | null;
+  idioma: string | null;
   activo: boolean;
   primer_email_enviado: boolean;
 };
@@ -30,7 +32,7 @@ async function getClients(): Promise<{ clients: Client[]; error: string | null }
   const supabase = createClient(url, key);
   const { data, error } = await supabase
     .from('clients')
-    .select('id, nombre_dueno, nombre_compania, email, activo, primer_email_enviado')
+    .select('id, nombre_dueno, nombre_compania, email, telefono, idioma, activo, primer_email_enviado')
     .order('nombre_compania', { ascending: true });
 
   if (error) {
@@ -102,6 +104,8 @@ export default async function AdminPage() {
                 <th className="px-4 py-3 font-medium">Compañía</th>
                 <th className="px-4 py-3 font-medium">Dueño</th>
                 <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Idioma</th>
+                <th className="px-4 py-3 font-medium">Teléfono</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium text-right">Acción</th>
               </tr>
@@ -109,7 +113,7 @@ export default async function AdminPage() {
             <tbody className="divide-y divide-white/5">
               {clients.length === 0 && !error && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-[#7FA3C4]">
+                  <td colSpan={7} className="px-4 py-8 text-center text-[#7FA3C4]">
                     No hay clientes registrados todavía.
                   </td>
                 </tr>
@@ -119,6 +123,8 @@ export default async function AdminPage() {
                   <td className="px-4 py-3 font-medium">{c.nombre_compania}</td>
                   <td className="px-4 py-3 text-[#B9CBDD]">{c.nombre_dueno}</td>
                   <td className="px-4 py-3 text-[#B9CBDD]">{c.email}</td>
+                  <td className="px-4 py-3 text-[#B9CBDD]">{c.idioma || '—'}</td>
+                  <td className="px-4 py-3 text-[#B9CBDD]">{c.telefono || '—'}</td>
                   <td className="px-4 py-3">
                     {c.activo ? (
                       <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs text-green-300">
