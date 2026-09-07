@@ -59,15 +59,19 @@ export async function POST() {
       );
     }
 
+    // Deduplica por correo (el upsert falla si el lote trae emails repetidos).
+    const deduped = Array.from(new Map(rows.map((r) => [r.email, r])).values());
+    const duplicates = rows.length - deduped.length;
+
     const { error } = await supabase
       .from('clients')
-      .upsert(rows, { onConflict: 'email' });
+      .upsert(deduped, { onConflict: 'email' });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ synced: rows.length });
+    return NextResponse.json({ synced: deduped.length, duplicates });
   } catch (e: any) {
     return NextResponse.json(
       { error: `Error sincronizando: ${e?.message ?? 'desconocido'}` },

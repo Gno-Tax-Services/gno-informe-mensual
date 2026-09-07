@@ -13,7 +13,10 @@ export default function SyncClientsButton() {
       const res = await fetch('/api/sync-clients', { method: 'POST' });
       const data = await res.json().catch(() => ({}) as any);
       if (!res.ok) throw new Error(data.error || 'Error al sincronizar');
-      setMsg(`✓ ${data.synced} clientes sincronizados`);
+      setMsg(
+        `✓ ${data.synced} clientes sincronizados` +
+          (data.duplicates ? ` (${data.duplicates} correos repetidos omitidos)` : '')
+      );
       // Recarga para mostrar los clientes nuevos.
       setTimeout(() => window.location.reload(), 900);
     } catch (e: any) {
