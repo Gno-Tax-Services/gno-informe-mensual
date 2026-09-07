@@ -14,8 +14,9 @@ export default function SyncClientsButton() {
       const data = await res.json().catch(() => ({}) as any);
       if (!res.ok) throw new Error(data.error || 'Error al sincronizar');
       setMsg(
-        `✓ ${data.synced} clientes sincronizados` +
-          (data.duplicates ? ` (${data.duplicates} correos repetidos omitidos)` : '')
+        `✓ ${data.synced} sincronizados` +
+          (data.deactivated ? ` · ${data.deactivated} marcados inactivos` : '') +
+          (data.duplicates ? ` · ${data.duplicates} duplicados omitidos` : '')
       );
       // Recarga para mostrar los clientes nuevos.
       setTimeout(() => window.location.reload(), 900);

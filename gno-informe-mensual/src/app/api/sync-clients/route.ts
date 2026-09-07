@@ -74,7 +74,28 @@ export async function POST() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ synced: deduped.length, duplicates });
+    // Reemplazo seguro (Opción A): marca "inactivo" a los clientes que YA NO
+    // están en la lista de Drive (sin borrar → conserva historial de informes).
+    const sheetKeys = new Set(
+      deduped.map((r) => `${r.nombre_compania.toLowerCase()}||${r.email}`)
+    );
+    let deactivated = 0;
+    const { data: existing } = await supabase
+      .from('clients')
+      .select('id, nombre_compania, email, activo');
+    const toDeactivate = (existing ?? [])
+      .filter(
+        (c: any) =>
+          c.activo &&
+          !sheetKeys.has(`${(c.nombre_compania || '').toLowerCase()}||${c.email}`)
+      )
+      .map((c: any) => c.id);
+    if (toDeactivate.length) {
+      await supabase.from('clients').update({ activo: false }).in('id', toDeactivate);
+      deactivated = toDeactivate.length;
+    }
+
+    return NextResponse.json({ synced: deduped.length, duplicates, deactivated });
   } catch (e: any) {
     return NextResponse.json(
       { error: `Error sincronizando: ${e?.message ?? 'desconocido'}` },
