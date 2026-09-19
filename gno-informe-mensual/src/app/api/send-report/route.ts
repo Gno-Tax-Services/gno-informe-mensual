@@ -73,8 +73,8 @@ export async function POST(req: NextRequest) {
     const testEmail = process.env.GNO_TEST_EMAIL?.trim();
     const recipient = testEmail || client.email;
     const subject = testEmail
-      ? `[PRUEBA → ${client.email}] Informe Financiero — ${client.nombre_compania} · ${report.periodo}`
-      : `Informe Financiero — ${client.nombre_compania} · ${report.periodo}`;
+      ? `[PRUEBA > ${client.email}] Informe Financiero - ${client.nombre_compania} - ${report.periodo}`
+      : `Informe Financiero - ${client.nombre_compania} - ${report.periodo}`;
 
     // Envío por Gmail — capturamos el error real para poder diagnosticarlo.
     try {

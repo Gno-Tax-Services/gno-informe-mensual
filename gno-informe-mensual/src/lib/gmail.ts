@@ -29,6 +29,11 @@ function getSenderClient() {
   return client;
 }
 
+function rfc2047(value: string): string {
+  if (!/[^\x20-\x7E]/.test(value)) return value;
+  return `=?UTF-8?B?${Buffer.from(value, 'utf-8').toString('base64')}?=`;
+}
+
 export async function sendEmailViaGmail(
   to: string,
   subject: string,
@@ -46,7 +51,7 @@ export async function sendEmailViaGmail(
     `From: "${fromName}" <${fromEmail}>`,
     `To: ${to}`,
     `Reply-To: ${replyTo}`,
-    `Subject: ${subject}`,
+    `Subject: ${rfc2047(subject)}`,
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=utf-8',
     '',
