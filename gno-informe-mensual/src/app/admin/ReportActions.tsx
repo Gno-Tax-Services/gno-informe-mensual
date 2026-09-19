@@ -160,6 +160,31 @@ export default function ReportActions({
     }
   }
 
+  async function pollVideoStatus(reportId: string) {
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/reports/video/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reportId }),
+        });
+        const data = await res.json().catch(() => ({}) as any);
+        if (!res.ok) return;
+        if (data.status === 'ready' && data.url) {
+          setVideoStatus('ready');
+          setVideoUrl(data.url);
+          setMsg({ type: 'ok', text: '¡Video listo! Ya puedes enviar el email.' });
+        } else if (data.status === 'error') {
+          setVideoStatus('error');
+          setMsg({ type: 'err', text: data.error || 'El video falló en HeyGen.' });
+        } else {
+          setTimeout(poll, 15000);
+        }
+      } catch { /* retry silently */ setTimeout(poll, 15000); }
+    };
+    setTimeout(poll, 15000);
+  }
+
   async function generarVideo() {
     if (!report) return;
     setBusy(true);
@@ -177,7 +202,8 @@ export default function ReportActions({
       }
       if (!res.ok) throw new Error(data.error || 'Error al generar el video');
       setVideoStatus('processing');
-      setMsg({ type: 'info', text: 'Video en proceso en HeyGen (puede tardar unos minutos).' });
+      setMsg({ type: 'info', text: 'Video en proceso en HeyGen (verificando cada 15s automáticamente).' });
+      pollVideoStatus(report.id);
     } catch (e: any) {
       setMsg({ type: 'err', text: e.message });
     } finally {
@@ -416,10 +442,11 @@ export default function ReportActions({
             <button
               type="button"
               onClick={enviarInforme}
-              disabled={busy}
+              disabled={busy || videoStatus === 'processing'}
+              title={videoStatus === 'processing' ? 'Espera a que el video esté listo' : ''}
               className="flex-1 rounded bg-gold px-3 py-1.5 text-xs font-medium text-navy transition hover:bg-gold/90 disabled:opacity-60"
             >
-              {busy ? '…' : 'Enviar por email'}
+              {busy ? '…' : videoStatus === 'processing' ? 'Esperando video…' : 'Enviar por email'}
             </button>
           </>
         )}
