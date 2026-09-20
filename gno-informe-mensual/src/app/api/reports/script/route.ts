@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
   const { data: client, error: cErr } = await supabase
     .from('clients')
-    .select('nombre_dueno, nombre_compania, industria')
+    .select('nombre_dueno, nombre_compania, industria, idioma')
     .eq('id', report.client_id)
     .single();
 
@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
       nombreDueno: client.nombre_dueno,
       nombreCompania: client.nombre_compania,
       industria: client.industria,
+      idioma: client.idioma,
       periodo: report.periodo,
       totalIncome: report.total_income,
       totalCogs: report.total_cogs,
