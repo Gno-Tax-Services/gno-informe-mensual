@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { sendEmailViaGmail, isGmailSenderConfigured } from '@/lib/gmail';
-import { buildReportEmail } from '@/lib/email-template';
+import { buildReportEmail, getEmailSubject } from '@/lib/email-template';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
@@ -67,14 +67,14 @@ export async function POST(req: NextRequest) {
       periodo: report.periodo,
       videoUrl: report.video_url,
       magicToken,
+      idioma: client.idioma,
     });
-    // MODO PRUEBA: si GNO_TEST_EMAIL está definido, TODOS los correos van a esa
-    // dirección (no a los clientes reales). Quitar/vaciar esa env var = producción.
     const testEmail = process.env.GNO_TEST_EMAIL?.trim();
     const recipient = testEmail || client.email;
+    const baseSubject = getEmailSubject(client.nombre_compania, report.periodo, client.idioma);
     const subject = testEmail
-      ? `[PRUEBA > ${client.email}] Informe Financiero - ${client.nombre_compania} - ${report.periodo}`
-      : `Informe Financiero - ${client.nombre_compania} - ${report.periodo}`;
+      ? `[PRUEBA > ${client.email}] ${baseSubject}`
+      : baseSubject;
 
     // Envío por Gmail — capturamos el error real para poder diagnosticarlo.
     try {
