@@ -22,6 +22,47 @@ export default async function ReportPage({ params }: Props) {
 
   const client = report.clients as any;
 
+  const PAGE_STRINGS: Record<string, { header: string; videoProcessing: string; greeting: (name: string, periodo: string) => string; cta: string; footer: string }> = {
+    es: {
+      header: 'Informe Financiero Mensual',
+      videoProcessing: 'Video en procesamiento — disponible pronto',
+      greeting: (name, periodo) => `Hola ${name}, tu informe financiero del periodo ${periodo} está listo. Mira el video de arriba para el análisis detallado de tu equipo contable.`,
+      cta: 'Agendar Consulta con tu Contador',
+      footer: 'Este enlace es personal y expira en 30 días.',
+    },
+    en: {
+      header: 'Monthly Financial Report',
+      videoProcessing: 'Video processing — available soon',
+      greeting: (name, periodo) => `Hi ${name}, your financial report for ${periodo} is ready. Watch the video above for a detailed analysis from your accounting team.`,
+      cta: 'Schedule a Consultation with your Accountant',
+      footer: 'This link is personal and expires in 30 days.',
+    },
+    fr: {
+      header: 'Rapport Financier Mensuel',
+      videoProcessing: 'Vidéo en cours de traitement — disponible bientôt',
+      greeting: (name, periodo) => `Bonjour ${name}, votre rapport financier pour la période ${periodo} est prêt. Regardez la vidéo ci-dessus pour l'analyse détaillée de votre équipe comptable.`,
+      cta: 'Planifier une Consultation avec votre Comptable',
+      footer: 'Ce lien est personnel et expire dans 30 jours.',
+    },
+    pt: {
+      header: 'Relatório Financeiro Mensal',
+      videoProcessing: 'Vídeo em processamento — disponível em breve',
+      greeting: (name, periodo) => `Olá ${name}, seu relatório financeiro do período ${periodo} está pronto. Assista ao vídeo acima para a análise detalhada da sua equipe contábil.`,
+      cta: 'Agendar Consulta com seu Contador',
+      footer: 'Este link é pessoal e expira em 30 dias.',
+    },
+  };
+
+  function normLang(idioma?: string | null): string {
+    const raw = (idioma || 'espanol').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    if (raw.startsWith('en') || raw.startsWith('in')) return 'en';
+    if (raw.startsWith('fr') || raw.startsWith('fran')) return 'fr';
+    if (raw.startsWith('pt') || raw.startsWith('por')) return 'pt';
+    return 'es';
+  }
+
+  const t = PAGE_STRINGS[normLang(client.idioma)] || PAGE_STRINGS.es;
+
   return (
     <main className="min-h-screen bg-[#0B1F3A] flex flex-col items-center justify-start py-12 px-4">
       {/* Header */}
@@ -32,7 +73,7 @@ export default async function ReportPage({ params }: Props) {
           className="h-14 mx-auto mb-3"
         />
         <p className="text-[#7FA3C4] text-xs tracking-widest uppercase">
-          Informe Financiero Mensual
+          {t.header}
         </p>
       </div>
 
@@ -56,16 +97,14 @@ export default async function ReportPage({ params }: Props) {
             />
           ) : (
             <div className="flex items-center justify-center h-full text-[#6B7A8D]">
-              Video en procesamiento — disponible pronto
+              {t.videoProcessing}
             </div>
           )}
         </div>
 
         <div className="p-6">
           <p className="text-[#A8BBCC] text-sm mb-6">
-            Hola <strong className="text-white">{client.nombre_dueno}</strong>,
-            tu informe financiero del periodo <strong className="text-white">{report.periodo}</strong> está listo.
-            Mira el video de arriba para el análisis detallado de tu equipo contable.
+            {t.greeting(client.nombre_dueno, report.periodo)}
           </p>
 
           <a
@@ -74,7 +113,7 @@ export default async function ReportPage({ params }: Props) {
             rel="noopener noreferrer"
             className="block w-full text-center border border-[#C49A2E] text-[#C49A2E] py-3 text-sm font-semibold tracking-wider uppercase hover:bg-[#C49A2E] hover:text-[#0B1F3A] transition-colors"
           >
-            Agendar Consulta con tu Contador
+            {t.cta}
           </a>
         </div>
       </div>
@@ -82,7 +121,7 @@ export default async function ReportPage({ params }: Props) {
       {/* Footer */}
       <p className="mt-8 text-[#3D5570] text-xs text-center">
         GNO Tax &amp; Business Center LLC · New Orleans, LA<br />
-        Este enlace es personal y expira en 30 días.
+        {t.footer}
       </p>
     </main>
   );
