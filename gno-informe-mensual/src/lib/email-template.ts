@@ -5,6 +5,7 @@ interface ReportEmailVars {
   videoUrl: string;
   magicToken: string;
   idioma?: string | null;
+  emailLogId?: string;
 }
 
 type EmailStrings = {
@@ -158,7 +159,7 @@ export function getWelcomeSubject(compania: string, idioma?: string | null): str
   return `${t.subject} — ${compania}`;
 }
 
-export function buildWelcomeEmail(vars: { nombre: string; compania: string; videoUrl: string; magicToken: string; idioma?: string | null }): string {
+export function buildWelcomeEmail(vars: { nombre: string; compania: string; videoUrl: string; magicToken: string; idioma?: string | null; emailLogId?: string }): string {
   const t = WELCOME_LANG[normalizeLang(vars.idioma)] || WELCOME_LANG.es;
   const lang = normalizeLang(vars.idioma);
   const et = EMAIL_LANG[lang] || EMAIL_LANG.es;
@@ -262,6 +263,7 @@ export function buildWelcomeEmail(vars: { nombre: string; compania: string; vide
       <a href="mailto:${process.env.GNO_REPLY_TO}">${et.footerContact}</a>
     </div>
   </div>
+${vars.emailLogId ? `<img src="${appUrl}/api/track/open?id=${vars.emailLogId}" width="1" height="1" alt="" style="display:block;border:0">` : ''}
 </div>
 </body>
 </html>`;
@@ -388,6 +390,7 @@ export function buildReportEmail(vars: ReportEmailVars): string {
       <a href="mailto:${process.env.GNO_REPLY_TO}">${t.footerContact}</a>
     </div>
   </div>
+${vars.emailLogId ? `<img src="${appUrl}/api/track/open?id=${vars.emailLogId}" width="1" height="1" alt="" style="display:block;border:0">` : ''}
 </div>
 </body>
 </html>`;
