@@ -109,6 +109,164 @@ const EMAIL_LANG: Record<string, EmailStrings> = {
   },
 };
 
+type WelcomeStrings = {
+  subject: string;
+  salutation: string;
+  intro: string;
+  ctaBtn: string;
+  ctaSub: string;
+  closing: string;
+};
+
+const WELCOME_LANG: Record<string, WelcomeStrings> = {
+  es: {
+    subject: 'Bienvenido a tu Informe Financiero Mensual',
+    salutation: 'Estimado/a',
+    intro: 'En <strong>GNO Tax &amp; Business Center</strong> estamos emocionados de anunciarle un nuevo servicio exclusivo para nuestros clientes: a partir de este mes, recibirá cada mes un <strong>video personalizado</strong> con el resumen financiero de su empresa, directamente en su correo electrónico.',
+    ctaBtn: 'Ver Video de Bienvenida',
+    ctaSub: 'Conoce cómo funciona tu informe mensual',
+    closing: 'El día 25 de cada mes recibirá su primer informe con el análisis de resultados de su empresa. ¡Estamos para servirle!',
+  },
+  en: {
+    subject: 'Welcome to Your Monthly Financial Report',
+    salutation: 'Dear',
+    intro: 'At <strong>GNO Tax &amp; Business Center</strong>, we are excited to announce a new exclusive service for our clients: starting this month, you will receive a <strong>personalized video</strong> every month with your business financial summary, delivered directly to your email.',
+    ctaBtn: 'Watch Welcome Video',
+    ctaSub: 'Learn how your monthly report works',
+    closing: 'On the 25th of each month, you will receive your report with your business results analysis. We are here to serve you!',
+  },
+  fr: {
+    subject: 'Bienvenue à votre Rapport Financier Mensuel',
+    salutation: 'Cher/Chère',
+    intro: 'Chez <strong>GNO Tax &amp; Business Center</strong>, nous sommes ravis de vous annoncer un nouveau service exclusif pour nos clients : à partir de ce mois, vous recevrez chaque mois une <strong>vidéo personnalisée</strong> avec le résumé financier de votre entreprise, directement dans votre boîte e-mail.',
+    ctaBtn: 'Voir la Vidéo de Bienvenue',
+    ctaSub: 'Découvrez comment fonctionne votre rapport mensuel',
+    closing: 'Le 25 de chaque mois, vous recevrez votre rapport avec l\'analyse des résultats de votre entreprise. Nous sommes à votre service !',
+  },
+  pt: {
+    subject: 'Bem-vindo ao seu Relatório Financeiro Mensal',
+    salutation: 'Prezado/a',
+    intro: 'Na <strong>GNO Tax &amp; Business Center</strong>, estamos entusiasmados em anunciar um novo serviço exclusivo para nossos clientes: a partir deste mês, você receberá todo mês um <strong>vídeo personalizado</strong> com o resumo financeiro da sua empresa, diretamente no seu e-mail.',
+    ctaBtn: 'Assistir Vídeo de Boas-vindas',
+    ctaSub: 'Saiba como funciona seu relatório mensal',
+    closing: 'No dia 25 de cada mês, você receberá seu relatório com a análise dos resultados da sua empresa. Estamos aqui para ajudar!',
+  },
+};
+
+export function getWelcomeSubject(compania: string, idioma?: string | null): string {
+  const t = WELCOME_LANG[normalizeLang(idioma)] || WELCOME_LANG.es;
+  return `${t.subject} — ${compania}`;
+}
+
+export function buildWelcomeEmail(vars: { nombre: string; compania: string; videoUrl: string; magicToken: string; idioma?: string | null }): string {
+  const t = WELCOME_LANG[normalizeLang(vars.idioma)] || WELCOME_LANG.es;
+  const lang = normalizeLang(vars.idioma);
+  const et = EMAIL_LANG[lang] || EMAIL_LANG.es;
+  const appUrl = (
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    'https://gno-informe-mensual.vercel.app'
+  ).replace(/\/+$/, '');
+  const calLink = process.env.GNO_CAL_LINK ?? 'https://cal.com/gno';
+  const phone = process.env.GNO_PHONE ?? '504 896 0276';
+  const website = process.env.GNO_WEBSITE ?? 'https://www.gnotaxservices.com';
+  const reportUrl = `${appUrl}/r/${vars.magicToken}`;
+
+  return /* html */`<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${t.subject} — ${vars.compania}</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Inter:wght@300;400;500;600&display=swap">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#EEF2F7;font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.65;padding:40px 16px 60px}
+    .card{max-width:600px;margin:0 auto;background:#fff;border:1px solid #D6DDE8;overflow:hidden}
+    .header{background:#0B1F3A;padding:36px 40px 28px}
+    .logo{height:48px;width:auto;display:block}
+    .tagline{font-size:11px;font-weight:400;color:#7FA3C4;letter-spacing:.14em;text-transform:uppercase;margin-top:8px}
+    .rule{height:2px;background:linear-gradient(90deg,#C49A2E 0%,#E8C96A 50%,transparent 100%);margin-top:24px}
+    .badge{background:#2E7D32;padding:14px 40px;display:flex;align-items:center;justify-content:center}
+    .badge-label{font-size:11px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:#fff}
+    .body{padding:40px 40px 32px}
+    .salutation{font-family:'Playfair Display',Georgia,serif;font-size:20px;color:#1A2B3C;margin-bottom:20px}
+    p{color:#3D4F63;font-size:14.5px;line-height:1.72;margin-bottom:18px}
+    .cta{text-align:center;margin:32px 0}
+    .btn{display:inline-block;background:#2E7D32;color:#fff;text-decoration:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:16px 40px}
+    .cta-sub{display:block;font-size:11.5px;color:#6B7A8D;margin-top:10px}
+    .sig{padding:28px 40px 32px;border-top:1px solid #D6DDE8}
+    .sig-name{font-family:'Playfair Display',Georgia,serif;font-size:16px;font-weight:600;color:#1A2B3C}
+    .sig-cred{font-size:11.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#C49A2E;margin-top:2px}
+    .sig-firm{font-size:13px;color:#3D4F63;margin-top:6px}
+    .sig-contact{margin-top:14px;display:flex;flex-direction:column;gap:4px}
+    .sig-contact span{font-size:12.5px;color:#6B7A8D}
+    .sig-contact a{color:#1D4E8F;text-decoration:none}
+    .consult{padding:0 40px 36px;text-align:center}
+    .consult-btn{display:inline-block;border:1.5px solid #1D4E8F;color:#1D4E8F;text-decoration:none;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:12px 32px}
+    .footer{background:#0B1F3A;padding:20px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+    .footer-firm{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:#A8BBCC}
+    .footer-links{display:flex;gap:16px}
+    .footer-links a{font-size:11px;color:#A8BBCC;text-decoration:none;opacity:.7}
+    @media(max-width:640px){
+      .header,.body,.sig,.consult{padding-left:24px;padding-right:24px}
+      .badge{padding:12px 24px}
+      .footer{padding:18px 24px;flex-direction:column}
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <img src="https://gnotaxservices.com/wp-content/uploads/2024/07/cropped-gno_tax_business_center_logo-removebg-preview.png"
+         alt="GNO Tax & Business Center" class="logo"
+         onerror="this.outerHTML='<div style=\\'font-family:Playfair Display,Georgia,serif;font-size:22px;font-weight:600;color:#fff\\'>GNO Tax &amp; Business Center</div>'">
+    <div class="tagline">Accountants MBA / CAA &nbsp;·&nbsp; New Orleans, Louisiana</div>
+    <div class="rule"></div>
+  </div>
+
+  <div class="badge">
+    <span class="badge-label">${t.subject}</span>
+  </div>
+
+  <div class="body">
+    <p class="salutation">${t.salutation} ${vars.nombre},</p>
+    <p>${t.intro}</p>
+    <p>${t.closing}</p>
+    <div class="cta">
+      <a href="${reportUrl}" class="btn">${t.ctaBtn}</a>
+      <span class="cta-sub">${t.ctaSub}</span>
+    </div>
+  </div>
+
+  <div class="sig">
+    <div class="sig-name">Jeiver González</div>
+    <div class="sig-cred">Accountant MBA / CAA &nbsp;·&nbsp; Licensed Public Accountant — Louisiana</div>
+    <div class="sig-firm">GNO Tax &amp; Business Center LLC</div>
+    <div class="sig-contact">
+      <span>📞 <a href="tel:${phone.replace(/\s/g, '')}">( ${phone})</a></span>
+      <span>🌐 <a href="${website}">${website.replace('https://', '')}</a></span>
+      <span>✉️ <a href="mailto:${process.env.GNO_REPLY_TO}">${process.env.GNO_REPLY_TO}</a></span>
+    </div>
+  </div>
+
+  <div class="consult">
+    <a href="${calLink}" class="consult-btn">${et.consultBtn}</a>
+  </div>
+
+  <div class="footer">
+    <span class="footer-firm">GNO Tax &amp; Business Center LLC &nbsp;·&nbsp; New Orleans, LA</span>
+    <div class="footer-links">
+      <a href="${website}">${et.footerWeb}</a>
+      <a href="${calLink}">${et.footerCal}</a>
+      <a href="mailto:${process.env.GNO_REPLY_TO}">${et.footerContact}</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
 export function getEmailSubject(compania: string, periodo: string, idioma?: string | null): string {
   const t = EMAIL_LANG[normalizeLang(idioma)] || EMAIL_LANG.es;
   return `${t.subject} - ${compania} - ${periodo}`;

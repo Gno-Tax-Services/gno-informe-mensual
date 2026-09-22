@@ -18,7 +18,8 @@ export function isHeygenConfigured(): boolean {
 // Crea el video y devuelve el video_id de HeyGen (la generación es asíncrona).
 export async function generateAvatarVideo(
   script: string,
-  title = 'GNO Informe Mensual'
+  title = 'GNO Informe Mensual',
+  avatarId?: string
 ): Promise<string> {
   const res = await fetch(`${HEYGEN_API}/v2/video/generate`, {
     method: 'POST',
@@ -34,7 +35,7 @@ export async function generateAvatarVideo(
         {
           character: {
             type: 'avatar',
-            avatar_id: AVATAR_ID,
+            avatar_id: avatarId || AVATAR_ID,
             avatar_style: 'normal',
           },
           voice: {
