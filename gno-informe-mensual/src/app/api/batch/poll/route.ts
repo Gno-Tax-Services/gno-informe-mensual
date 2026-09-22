@@ -94,15 +94,6 @@ export async function POST(req: NextRequest) {
         .update({ magic_token: magicToken, magic_token_expires_at: expiresAt.toISOString() })
         .eq('id', report.id);
 
-      const html = buildReportEmail({
-        nombre: client.nombre_dueno,
-        compania: client.nombre_compania,
-        periodo: report.periodo,
-        videoUrl: heygen.url!,
-        magicToken,
-        idioma: client.idioma,
-      });
-
       const testEmail = process.env.GNO_TEST_EMAIL?.trim();
       const recipient = testEmail || client.email;
       const baseSubject = getEmailSubject(client.nombre_compania, report.periodo, client.idioma);
@@ -110,15 +101,25 @@ export async function POST(req: NextRequest) {
         ? `[PRUEBA > ${client.email}] ${baseSubject}`
         : baseSubject;
 
-      await sendEmailViaGmail(recipient, subject, html);
-
-      await supabase.from('email_logs').insert({
+      const { data: emailLog } = await supabase.from('email_logs').insert({
         client_id: client.id,
         report_id: report.id,
-        sent_at: new Date().toISOString(),
+        to_email: recipient,
         subject,
         status: 'sent',
+      }).select('id').single();
+
+      const html = buildReportEmail({
+        nombre: client.nombre_dueno,
+        compania: client.nombre_compania,
+        periodo: report.periodo,
+        videoUrl: heygen.url!,
+        magicToken,
+        idioma: client.idioma,
+        emailLogId: emailLog?.id,
       });
+
+      await sendEmailViaGmail(recipient, subject, html);
 
       if (!client.primer_email_enviado) {
         await supabase

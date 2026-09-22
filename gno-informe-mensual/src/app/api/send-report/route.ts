@@ -61,14 +61,6 @@ export async function POST(req: NextRequest) {
       .update({ magic_token: magicToken, magic_token_expires_at: expiresAt.toISOString() })
       .eq('id', reportId);
 
-    const html = buildReportEmail({
-      nombre: client.nombre_dueno,
-      compania: client.nombre_compania,
-      periodo: report.periodo,
-      videoUrl: report.video_url,
-      magicToken,
-      idioma: client.idioma,
-    });
     const testEmail = process.env.GNO_TEST_EMAIL?.trim();
     const recipient = testEmail || client.email;
     const baseSubject = getEmailSubject(client.nombre_compania, report.periodo, client.idioma);
@@ -76,10 +68,30 @@ export async function POST(req: NextRequest) {
       ? `[PRUEBA > ${client.email}] ${baseSubject}`
       : baseSubject;
 
-    // Envío por Gmail — capturamos el error real para poder diagnosticarlo.
+    const { data: emailLog } = await supabase.from('email_logs').insert({
+      client_id: clientId,
+      report_id: reportId,
+      to_email: recipient,
+      subject,
+      status: 'sent',
+    }).select('id').single();
+
+    const html = buildReportEmail({
+      nombre: client.nombre_dueno,
+      compania: client.nombre_compania,
+      periodo: report.periodo,
+      videoUrl: report.video_url,
+      magicToken,
+      idioma: client.idioma,
+      emailLogId: emailLog?.id,
+    });
+
     try {
       await sendEmailViaGmail(recipient, subject, html);
     } catch (e: any) {
+      if (emailLog?.id) {
+        await supabase.from('email_logs').update({ status: 'failed', error_detail: e?.message }).eq('id', emailLog.id);
+      }
       const detail =
         e?.response?.data?.error?.message ||
         e?.errors?.[0]?.message ||
@@ -90,15 +102,6 @@ export async function POST(req: NextRequest) {
         { status: 502 }
       );
     }
-
-    // Log del envío (no bloquea la respuesta si falla)
-    await supabase.from('email_logs').insert({
-      client_id: clientId,
-      report_id: reportId,
-      sent_at: new Date().toISOString(),
-      subject,
-      status: 'sent',
-    });
 
     if (!client.primer_email_enviado) {
       await supabase
