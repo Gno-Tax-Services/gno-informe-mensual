@@ -29,7 +29,7 @@ Este servicio es parte de nuestro compromiso de mantenerte informado sobre la sa
 
 Si tienes alguna pregunta, no dudes en contactarnos. Estamos aquí para ayudarte.
 
-Un abrazo, Jey, el contador de la IA.`,
+Un abrazo, Jey, el contador de la inteligencia artificial.`,
 
   en: `Hi, I'm Jeiver González, founder of Yee-No Tax and Business Center.
 
@@ -43,7 +43,7 @@ This service is part of our commitment to keeping you informed about your compan
 
 If you have any questions, don't hesitate to reach out. We are here to help.
 
-Take care, Jay, the AI accountant.`,
+Take care, Jay, the artificial intelligence accountant.`,
 
   fr: `Bonjour, je suis Jeiver González, fondateur de Yee-No Tax and Business Center.
 
@@ -57,7 +57,7 @@ Ce service fait partie de notre engagement à vous tenir informé de la santé f
 
 Si vous avez des questions, n'hésitez pas à nous contacter. Nous sommes là pour vous aider.
 
-Cordialement, Jey, le comptable de l'IA.`,
+Cordialement, Jey, le comptable de l'intelligence artificielle.`,
 
   pt: `Olá, sou Jeiver González, fundador da Yee-No Tax and Business Center.
 
@@ -71,7 +71,7 @@ Este serviço faz parte do nosso compromisso de mantê-lo informado sobre a saú
 
 Se tiver alguma dúvida, não hesite em nos contactar. Estamos aqui para ajudar.
 
-Um abraço, Jey, o contador da IA.`,
+Um abraço, Jey, o contador da inteligência artificial.`,
 };
 
 function normalizeLang(idioma?: string | null): string {
