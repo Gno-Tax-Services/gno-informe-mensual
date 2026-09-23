@@ -18,9 +18,11 @@ type Client = {
   idioma: string | null;
   activo: boolean;
   primer_email_enviado: boolean;
+  email_enviado: boolean;
+  email_abierto: boolean;
+  sms_enviado: boolean;
 };
 
-// Lee la lista de clientes con la service role key (bypassa RLS, solo server).
 async function getClients(): Promise<{ clients: Client[]; error: string | null }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -38,7 +40,38 @@ async function getClients(): Promise<{ clients: Client[]; error: string | null }
   if (error) {
     return { clients: [], error: error.message };
   }
-  return { clients: (data as Client[]) ?? [], error: null };
+
+  const clientIds = (data ?? []).map((c: any) => c.id);
+
+  const { data: emailLogs } = await supabase
+    .from('email_logs')
+    .select('client_id, opened_at')
+    .in('client_id', clientIds);
+
+  const { data: smsLogs } = await supabase
+    .from('sms_logs')
+    .select('client_id')
+    .in('client_id', clientIds);
+
+  const emailByClient = new Map<string, { sent: boolean; opened: boolean }>();
+  for (const log of emailLogs ?? []) {
+    const prev = emailByClient.get(log.client_id);
+    emailByClient.set(log.client_id, {
+      sent: true,
+      opened: (prev?.opened || false) || !!log.opened_at,
+    });
+  }
+
+  const smsSet = new Set((smsLogs ?? []).map((s: any) => s.client_id));
+
+  const clients: Client[] = (data ?? []).map((c: any) => ({
+    ...c,
+    email_enviado: emailByClient.has(c.id),
+    email_abierto: emailByClient.get(c.id)?.opened ?? false,
+    sms_enviado: smsSet.has(c.id),
+  }));
+
+  return { clients, error: null };
 }
 
 export default async function AdminPage() {
@@ -49,7 +82,9 @@ export default async function AdminPage() {
 
   const { clients, error } = await getClients();
   const totalActivos = clients.filter((c) => c.activo).length;
-  const totalEnviados = clients.filter((c) => c.primer_email_enviado).length;
+  const totalEnviados = clients.filter((c) => c.email_enviado).length;
+  const totalAbiertos = clients.filter((c) => c.email_abierto).length;
+  const totalSms = clients.filter((c) => c.sms_enviado).length;
 
   return (
     <main className="min-h-screen bg-navy text-white">
@@ -79,10 +114,12 @@ export default async function AdminPage() {
 
       <div className="mx-auto max-w-5xl px-6 py-8">
         {/* KPIs */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-5">
           <Kpi label="Clientes" value={clients.length} />
           <Kpi label="Activos" value={totalActivos} />
-          <Kpi label="Con 1er email enviado" value={totalEnviados} />
+          <Kpi label="Emails Enviados" value={totalEnviados} />
+          <Kpi label="Emails Abiertos" value={totalAbiertos} />
+          <Kpi label="SMS Enviados" value={totalSms} />
         </div>
 
         <div className="mb-4 flex items-center justify-between">
@@ -107,13 +144,16 @@ export default async function AdminPage() {
                 <th className="px-4 py-3 font-medium">Idioma</th>
                 <th className="px-4 py-3 font-medium">Teléfono</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
+                <th className="px-4 py-3 font-medium text-center">Enviado</th>
+                <th className="px-4 py-3 font-medium text-center">Abierto</th>
+                <th className="px-4 py-3 font-medium text-center">SMS</th>
                 <th className="px-4 py-3 font-medium text-right">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {clients.length === 0 && !error && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-[#7FA3C4]">
+                  <td colSpan={10} className="px-4 py-8 text-center text-[#7FA3C4]">
                     No hay clientes registrados todavía.
                   </td>
                 </tr>
@@ -134,6 +174,29 @@ export default async function AdminPage() {
                       <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-[#7FA3C4]">
                         Inactivo
                       </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {c.email_enviado ? (
+                      <span className="text-green-400">Si</span>
+                    ) : (
+                      <span className="text-[#7FA3C4]">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {c.email_abierto ? (
+                      <span className="text-green-400">Si</span>
+                    ) : c.email_enviado ? (
+                      <span className="text-red-400">No</span>
+                    ) : (
+                      <span className="text-[#7FA3C4]">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {c.sms_enviado ? (
+                      <span className="text-yellow-400">Enviado</span>
+                    ) : (
+                      <span className="text-[#7FA3C4]">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right align-top">
