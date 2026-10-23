@@ -2,7 +2,11 @@
   "crons": [
     {
       "path": "/api/batch/cron",
-      "schedule": "*/5 14-18 25 * *"
+      "schedule": "*/5 18-22 25 * *"
+    },
+    {
+      "path": "/api/batch/cleanup",
+      "schedule": "0 16 20 * *"
     }
   ]
 }
