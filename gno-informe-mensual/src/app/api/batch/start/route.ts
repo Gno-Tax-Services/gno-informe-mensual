@@ -85,6 +85,14 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      // 1b. Exclude high-margin companies if threshold is set
+      const excludeAboveMargin = parseFloat(process.env.GNO_EXCLUDE_ABOVE_MARGIN || '');
+      if (!isNaN(excludeAboveMargin) && metrics.profitMargin !== null && metrics.profitMargin > excludeAboveMargin) {
+        logEntry.status = `excluded (margin ${metrics.profitMargin.toFixed(1)}% > ${excludeAboveMargin}%)`;
+        results.push(logEntry);
+        continue;
+      }
+
       // 2. Create report record
       const { data: report, error: rErr } = await supabase
         .from('reports')

@@ -9,6 +9,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function currentPeriod(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const prev = month === 0 ? 11 : month - 1;
+  const prevYear = month === 0 ? year - 1 : year;
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  return `${months[prev]} ${prevYear}`;
+}
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -31,7 +44,7 @@ export async function GET(req: NextRequest) {
     Authorization: `Bearer ${batchSecret}`,
   };
 
-  // Check if there are pending videos to poll
+  // Check if there are pending videos to poll (processing or ready but unsent)
   const { data: pending } = await supabase
     .from('reports')
     .select('id')
@@ -39,23 +52,29 @@ export async function GET(req: NextRequest) {
     .not('heygen_video_id', 'is', null)
     .limit(1);
 
-  const hasPending = pending && pending.length > 0;
+  // Also check for videos ready but emails held (dispatch date pending)
+  const { data: held } = await supabase
+    .from('reports')
+    .select('id')
+    .eq('video_status', 'ready')
+    .eq('status', 'draft')
+    .not('video_url', 'is', null)
+    .limit(1);
 
-  // On the first run (no pending videos), start the batch
+  const hasPending = (pending && pending.length > 0) || (held && held.length > 0);
+
   if (!hasPending) {
-    // Check if we already ran today by looking for reports created today
-    const today = new Date().toISOString().split('T')[0];
-    const { data: todayReports } = await supabase
+    const periodo = currentPeriod();
+    const { data: periodReports } = await supabase
       .from('reports')
       .select('id')
-      .gte('created_at', `${today}T00:00:00Z`)
+      .eq('periodo', periodo)
       .limit(1);
 
-    if (todayReports && todayReports.length > 0) {
-      return NextResponse.json({ action: 'idle', message: 'Batch already ran today, no pending videos.' });
+    if (periodReports && periodReports.length > 0) {
+      return NextResponse.json({ action: 'idle', message: `Batch already ran for ${periodo}, no pending videos.` });
     }
 
-    // Start the batch
     const startRes = await fetch(`${appUrl}/api/batch/start`, {
       method: 'POST',
       headers,

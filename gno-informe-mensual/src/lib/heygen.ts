@@ -81,6 +81,19 @@ export async function getVideoStatus(videoId: string): Promise<HeygenStatus> {
   };
 }
 
+// Elimina un video de HeyGen. No falla si ya no existe.
+export async function deleteHeygenVideo(videoId: string): Promise<boolean> {
+  const res = await fetch(`${HEYGEN_API}/v1/video.delete`, {
+    method: 'DELETE',
+    headers: {
+      'X-Api-Key': process.env.HEYGEN_API_KEY!,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ video_id: videoId }),
+  });
+  return res.ok;
+}
+
 // Mapea el estado de HeyGen al enum de la columna reports.video_status.
 export function mapVideoStatus(heygen: string): 'pending' | 'processing' | 'ready' | 'error' {
   if (heygen === 'completed') return 'ready';
