@@ -26,13 +26,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { data: pending } = await supabase
+  // Fetch videos still processing in HeyGen
+  const { data: processing } = await supabase
     .from('reports')
-    .select('id, client_id, periodo, heygen_video_id, video_status')
+    .select('id, client_id, periodo, heygen_video_id, video_status, video_url')
     .eq('video_status', 'processing')
     .not('heygen_video_id', 'is', null);
 
-  if (!pending || pending.length === 0) {
+  // Also fetch videos ready but emails held (dispatch date was in the future)
+  const { data: heldReady } = await supabase
+    .from('reports')
+    .select('id, client_id, periodo, heygen_video_id, video_status, video_url')
+    .eq('video_status', 'ready')
+    .eq('status', 'draft')
+    .not('video_url', 'is', null);
+
+  const pending = [...(processing || []), ...(heldReady || [])];
+
+  if (pending.length === 0) {
     return NextResponse.json({ message: 'No pending videos.', checked: 0, sent: 0 });
   }
 
@@ -43,34 +54,50 @@ export async function POST(req: NextRequest) {
 
   for (const report of pending) {
     checked++;
-    let heygen;
-    try {
-      heygen = await getVideoStatus(report.heygen_video_id);
-    } catch (e: any) {
-      details.push({ client: report.client_id, status: 'error (status check)', error: e.message });
-      errors++;
-      continue;
+
+    let videoUrl = report.video_url;
+
+    // If still processing, check HeyGen status
+    if (report.video_status === 'processing') {
+      let heygen;
+      try {
+        heygen = await getVideoStatus(report.heygen_video_id);
+      } catch (e: any) {
+        details.push({ client: report.client_id, status: 'error (status check)', error: e.message });
+        errors++;
+        continue;
+      }
+
+      const videoStatus = mapVideoStatus(heygen.status);
+
+      if (videoStatus === 'processing') {
+        details.push({ client: report.client_id, status: 'still processing' });
+        continue;
+      }
+
+      if (videoStatus === 'error') {
+        await supabase.from('reports').update({ video_status: 'error' }).eq('id', report.id);
+        details.push({ client: report.client_id, status: 'video failed', error: heygen.error ?? undefined });
+        errors++;
+        continue;
+      }
+
+      videoUrl = heygen.url;
+      await supabase
+        .from('reports')
+        .update({ video_status: 'ready', video_url: heygen.url })
+        .eq('id', report.id);
     }
 
-    const videoStatus = mapVideoStatus(heygen.status);
-
-    if (videoStatus === 'processing') {
-      details.push({ client: report.client_id, status: 'still processing' });
-      continue;
+    // Hold emails until dispatch date if configured
+    const dispatchDate = process.env.GNO_DISPATCH_DATE;
+    if (dispatchDate) {
+      const today = new Date().toISOString().split('T')[0];
+      if (today < dispatchDate) {
+        details.push({ client: report.client_id, status: `video ready (held until ${dispatchDate})` });
+        continue;
+      }
     }
-
-    if (videoStatus === 'error') {
-      await supabase.from('reports').update({ video_status: 'error' }).eq('id', report.id);
-      details.push({ client: report.client_id, status: 'video failed', error: heygen.error ?? undefined });
-      errors++;
-      continue;
-    }
-
-    // Video is ready — update URL and send email
-    await supabase
-      .from('reports')
-      .update({ video_status: 'ready', video_url: heygen.url })
-      .eq('id', report.id);
 
     // Fetch client info for email
     const { data: client } = await supabase
@@ -113,7 +140,7 @@ export async function POST(req: NextRequest) {
         nombre: client.nombre_dueno,
         compania: client.nombre_compania,
         periodo: report.periodo,
-        videoUrl: heygen.url!,
+        videoUrl: videoUrl!,
         magicToken,
         idioma: client.idioma,
         emailLogId: emailLog?.id,
