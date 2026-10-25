@@ -1,17 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { notFound } from 'next/navigation';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 interface Props {
   params: { token: string };
 }
 
 export default async function ReportPage({ params }: Props) {
-  const { data: report } = await supabase
+  const { data: report } = await supabaseAdmin()
     .from('reports')
     .select('*, clients(*)')
     .eq('magic_token', params.token)

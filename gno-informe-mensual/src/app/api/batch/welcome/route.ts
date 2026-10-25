@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { generateAvatarVideo, getVideoStatus, mapVideoStatus, isHeygenConfigured } from '@/lib/heygen';
 import { sendEmailViaGmail, isGmailSenderConfigured } from '@/lib/gmail';
 import { buildWelcomeEmail, getWelcomeSubject } from '@/lib/email-template';
@@ -8,10 +8,6 @@ import crypto from 'crypto';
 export const maxDuration = 300;
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const WELCOME_AVATAR_ID = '4ece45d64ba5464da41032f2a05d8961';
 const WELCOME_PERIODO = 'Bienvenida';
@@ -101,7 +97,7 @@ async function handleStart() {
     return NextResponse.json({ error: 'HeyGen not configured' }, { status: 501 });
   }
 
-  const { data: clients } = await supabase
+  const { data: clients } = await supabaseAdmin()
     .from('clients')
     .select('id, nombre_dueno, nombre_compania, email, idioma')
     .eq('activo', true);
@@ -111,7 +107,7 @@ async function handleStart() {
   }
 
   // Check if welcome already started
-  const { data: existing } = await supabase
+  const { data: existing } = await supabaseAdmin()
     .from('reports')
     .select('id')
     .eq('periodo', WELCOME_PERIODO)
@@ -154,7 +150,7 @@ async function handleStart() {
     if (!videoId) continue;
 
     for (const client of langClients) {
-      const { error: insertErr } = await supabase.from('reports').insert({
+      const { error: insertErr } = await supabaseAdmin().from('reports').insert({
         client_id: client.id,
         periodo: WELCOME_PERIODO,
         heygen_video_id: videoId,
@@ -181,7 +177,7 @@ async function handlePoll() {
     return NextResponse.json({ error: 'Gmail not configured' }, { status: 501 });
   }
 
-  const { data: pending } = await supabase
+  const { data: pending } = await supabaseAdmin()
     .from('reports')
     .select('id, client_id, heygen_video_id, video_status')
     .eq('periodo', WELCOME_PERIODO)
@@ -220,19 +216,19 @@ async function handlePoll() {
     }
 
     if (cached.status === 'error') {
-      await supabase.from('reports').update({ video_status: 'error' }).eq('id', report.id);
+      await supabaseAdmin().from('reports').update({ video_status: 'error' }).eq('id', report.id);
       details.push({ client: report.client_id, status: 'video failed' });
       errCount++;
       continue;
     }
 
     // Video ready — update and send email
-    await supabase
+    await supabaseAdmin()
       .from('reports')
       .update({ video_status: 'ready', video_url: cached.url })
       .eq('id', report.id);
 
-    const { data: client } = await supabase
+    const { data: client } = await supabaseAdmin()
       .from('clients')
       .select('*')
       .eq('id', report.client_id)
@@ -247,7 +243,7 @@ async function handlePoll() {
     try {
       const magicToken = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days for welcome
-      await supabase
+      await supabaseAdmin()
         .from('reports')
         .update({ magic_token: magicToken, magic_token_expires_at: expiresAt.toISOString() })
         .eq('id', report.id);
@@ -259,7 +255,7 @@ async function handlePoll() {
         ? `[PRUEBA > ${client.email}] ${baseSubject}`
         : baseSubject;
 
-      const { data: emailLog } = await supabase.from('email_logs').insert({
+      const { data: emailLog } = await supabaseAdmin().from('email_logs').insert({
         client_id: client.id,
         report_id: report.id,
         to_email: recipient,
@@ -279,13 +275,13 @@ async function handlePoll() {
       await sendEmailViaGmail(recipient, subject, html);
 
       if (!client.primer_email_enviado) {
-        await supabase
+        await supabaseAdmin()
           .from('clients')
           .update({ primer_email_enviado: true })
           .eq('id', client.id);
       }
 
-      await supabase.from('reports').update({ status: 'sent' }).eq('id', report.id);
+      await supabaseAdmin().from('reports').update({ status: 'sent' }).eq('id', report.id);
 
       sent++;
       details.push({ client: client.nombre_compania, status: 'welcome email sent' });

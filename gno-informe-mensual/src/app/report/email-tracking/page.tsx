@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 type ClientRow = {
@@ -24,6 +24,14 @@ type StatusData = {
 };
 
 export default function EmailTrackingReport() {
+  return (
+    <Suspense fallback={<div style={{ padding: 24, textAlign: 'center' }}>Cargando...</div>}>
+      <EmailTrackingInner />
+    </Suspense>
+  );
+}
+
+function EmailTrackingInner() {
   const searchParams = useSearchParams();
   const [key, setKey] = useState('');
   const [data, setData] = useState<StatusData | null>(null);

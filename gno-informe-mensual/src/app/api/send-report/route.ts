@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { sendEmailViaGmail, isGmailSenderConfigured } from '@/lib/gmail';
 import { buildReportEmail, getEmailSubject } from '@/lib/email-template';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import crypto from 'crypto';
 
 // El envío por Gmail puede tardar (refresh de token + send); damos margen y
@@ -11,10 +11,6 @@ import crypto from 'crypto';
 export const maxDuration = 60;
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     const { clientId, reportId } = await req.json();
 
-    const { data: client, error: cErr } = await supabase
+    const { data: client, error: cErr } = await supabaseAdmin()
       .from('clients')
       .select('*')
       .eq('id', clientId)
@@ -44,7 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
     }
 
-    const { data: report, error: rErr } = await supabase
+    const { data: report, error: rErr } = await supabaseAdmin()
       .from('reports')
       .select('*')
       .eq('id', reportId)
@@ -56,7 +52,7 @@ export async function POST(req: NextRequest) {
     // Magic token para la página pública /r/[token]
     const magicToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 días
-    await supabase
+    await supabaseAdmin()
       .from('reports')
       .update({ magic_token: magicToken, magic_token_expires_at: expiresAt.toISOString() })
       .eq('id', reportId);
@@ -68,7 +64,7 @@ export async function POST(req: NextRequest) {
       ? `[PRUEBA > ${client.email}] ${baseSubject}`
       : baseSubject;
 
-    const { data: emailLog } = await supabase.from('email_logs').insert({
+    const { data: emailLog } = await supabaseAdmin().from('email_logs').insert({
       client_id: clientId,
       report_id: reportId,
       to_email: recipient,
@@ -90,7 +86,7 @@ export async function POST(req: NextRequest) {
       await sendEmailViaGmail(recipient, subject, html);
     } catch (e: any) {
       if (emailLog?.id) {
-        await supabase.from('email_logs').update({ status: 'failed', error_detail: e?.message }).eq('id', emailLog.id);
+        await supabaseAdmin().from('email_logs').update({ status: 'failed', error_detail: e?.message }).eq('id', emailLog.id);
       }
       const detail =
         e?.response?.data?.error?.message ||
@@ -104,7 +100,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!client.primer_email_enviado) {
-      await supabase
+      await supabaseAdmin()
         .from('clients')
         .update({ primer_email_enviado: true })
         .eq('id', clientId);

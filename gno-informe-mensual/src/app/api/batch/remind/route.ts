@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendSms, getReminderMessage, isTwilioConfigured } from '@/lib/sms';
 
 export const maxDuration = 300;
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get('authorization')?.replace('Bearer ', '');
@@ -26,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   const cutoff = new Date(Date.now() - hoursThreshold * 60 * 60 * 1000).toISOString();
 
-  const { data: unopened } = await supabase
+  const { data: unopened } = await supabaseAdmin()
     .from('email_logs')
     .select(`
       id,
@@ -51,7 +47,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'No unopened emails to remind', reminded: 0 });
   }
 
-  const { data: alreadySent } = await supabase
+  const { data: alreadySent } = await supabaseAdmin()
     .from('sms_logs')
     .select('client_id, report_id');
 
@@ -83,7 +79,7 @@ export async function POST(req: NextRequest) {
     try {
       const providerSid = await sendSms(client.telefono, message);
 
-      await supabase.from('sms_logs').insert({
+      await supabaseAdmin().from('sms_logs').insert({
         client_id: client.id,
         report_id: log.report_id,
         telefono: client.telefono,
@@ -95,7 +91,7 @@ export async function POST(req: NextRequest) {
       reminded++;
       details.push({ client: client.nombre_compania, status: 'sms sent' });
     } catch (e: any) {
-      await supabase.from('sms_logs').insert({
+      await supabaseAdmin().from('sms_logs').insert({
         client_id: client.id,
         report_id: log.report_id,
         telefono: client.telefono,

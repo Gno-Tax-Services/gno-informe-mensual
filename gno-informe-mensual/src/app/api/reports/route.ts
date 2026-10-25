@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Crea un informe mensual (borrador) para un cliente, con las métricas del mes.
 // El video HeyGen y la narrativa se agregan en un paso posterior.
@@ -35,7 +31,7 @@ export async function POST(req: NextRequest) {
   const profitMargin =
     totalIncome > 0 ? Number(((netIncome / totalIncome) * 100).toFixed(2)) : 0;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin()
     .from('reports')
     .insert({
       client_id: clientId,

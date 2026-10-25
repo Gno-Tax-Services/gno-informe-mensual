@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function GET(req: NextRequest) {
   const secret = req.headers.get('authorization')?.replace('Bearer ', '');
@@ -16,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const periodo = req.nextUrl.searchParams.get('periodo') || undefined;
 
-  const { data: clients } = await supabase
+  const { data: clients } = await supabaseAdmin()
     .from('clients')
     .select('id, nombre_compania, activo');
 
@@ -24,7 +20,7 @@ export async function GET(req: NextRequest) {
   const activeClients = clients?.filter((c: any) => c.activo).length ?? 0;
   const clientIds = (clients ?? []).map((c: any) => c.id);
 
-  let reportsQuery = supabase
+  let reportsQuery = supabaseAdmin()
     .from('reports')
     .select('id, client_id, periodo, status, video_status, created_at')
     .in('client_id', clientIds)
@@ -38,12 +34,12 @@ export async function GET(req: NextRequest) {
 
   const { data: reports } = await reportsQuery;
 
-  const { data: emailLogs } = await supabase
+  const { data: emailLogs } = await supabaseAdmin()
     .from('email_logs')
     .select('client_id, opened_at, created_at')
     .in('client_id', clientIds);
 
-  const { data: smsLogs } = await supabase
+  const { data: smsLogs } = await supabaseAdmin()
     .from('sms_logs')
     .select('client_id, created_at')
     .in('client_id', clientIds);

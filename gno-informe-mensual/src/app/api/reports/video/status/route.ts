@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getVideoStatus, mapVideoStatus, isHeygenConfigured } from '@/lib/heygen';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Consulta el estado del video en HeyGen y actualiza el informe cuando esté listo.
 export async function POST(req: NextRequest) {
@@ -27,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'reportId es requerido' }, { status: 400 });
   }
 
-  const { data: report, error: rErr } = await supabase
+  const { data: report, error: rErr } = await supabaseAdmin()
     .from('reports')
     .select('id, heygen_video_id')
     .eq('id', reportId)
@@ -57,7 +53,7 @@ export async function POST(req: NextRequest) {
   if (videoStatus === 'ready' && heygen.url) {
     update.video_url = heygen.url;
   }
-  await supabase.from('reports').update(update).eq('id', reportId);
+  await supabaseAdmin().from('reports').update(update).eq('id', reportId);
 
   return NextResponse.json({
     status: videoStatus,

@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { readClientList, isDriveConfigured } from '@/lib/drive';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // ID del Google Sheet "Client List" (configurable por env).
 const CLIENT_LIST_SHEET_ID =
@@ -66,7 +62,7 @@ export async function POST() {
     );
     const duplicates = rows.length - deduped.length;
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin()
       .from('clients')
       .upsert(deduped, { onConflict: 'nombre_compania,email' });
 
@@ -80,7 +76,7 @@ export async function POST() {
       deduped.map((r) => `${r.nombre_compania.toLowerCase()}||${r.email}`)
     );
     let deactivated = 0;
-    const { data: existing } = await supabase
+    const { data: existing } = await supabaseAdmin()
       .from('clients')
       .select('id, nombre_compania, email, activo');
     const toDeactivate = (existing ?? [])
@@ -91,7 +87,7 @@ export async function POST() {
       )
       .map((c: any) => c.id);
     if (toDeactivate.length) {
-      await supabase.from('clients').update({ activo: false }).in('id', toDeactivate);
+      await supabaseAdmin().from('clients').update({ activo: false }).in('id', toDeactivate);
       deactivated = toDeactivate.length;
     }
 

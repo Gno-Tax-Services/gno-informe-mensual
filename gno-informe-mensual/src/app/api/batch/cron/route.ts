@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export const maxDuration = 300;
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 function currentPeriod(): string {
   const now = new Date();
@@ -45,7 +41,7 @@ export async function GET(req: NextRequest) {
   };
 
   // Check if there are pending videos to poll (processing or ready but unsent)
-  const { data: pending } = await supabase
+  const { data: pending } = await supabaseAdmin()
     .from('reports')
     .select('id')
     .eq('video_status', 'processing')
@@ -53,7 +49,7 @@ export async function GET(req: NextRequest) {
     .limit(1);
 
   // Also check for videos ready but emails held (dispatch date pending)
-  const { data: held } = await supabase
+  const { data: held } = await supabaseAdmin()
     .from('reports')
     .select('id')
     .eq('video_status', 'ready')
@@ -65,7 +61,7 @@ export async function GET(req: NextRequest) {
 
   if (!hasPending) {
     const periodo = currentPeriod();
-    const { data: periodReports } = await supabase
+    const { data: periodReports } = await supabaseAdmin()
       .from('reports')
       .select('id')
       .eq('periodo', periodo)

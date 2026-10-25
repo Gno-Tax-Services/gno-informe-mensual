@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { findCompanyPnL, downloadPdfBase64, isDriveConfigured } from '@/lib/drive';
 import { extractFinancialsFromPdf } from '@/lib/extract-financials';
 import { generateNarrative, isNarrativeConfigured } from '@/lib/narrative';
@@ -8,10 +8,6 @@ import { generateAvatarVideo, isHeygenConfigured } from '@/lib/heygen';
 export const maxDuration = 300;
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 function currentPeriod(): { periodo: string; monthLabel: string } {
   const now = new Date();
@@ -44,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   const { periodo, monthLabel } = currentPeriod();
 
-  const { data: clients } = await supabase
+  const { data: clients } = await supabaseAdmin()
     .from('clients')
     .select('id, nombre_dueno, nombre_compania, email, industria, idioma')
     .eq('activo', true);
@@ -59,7 +55,7 @@ export async function POST(req: NextRequest) {
     const logEntry = { client: client.nombre_compania, status: 'pending', error: undefined as string | undefined };
 
     try {
-      const { data: existing } = await supabase
+      const { data: existing } = await supabaseAdmin()
         .from('reports')
         .select('id')
         .eq('client_id', client.id)
@@ -94,7 +90,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. Create report record
-      const { data: report, error: rErr } = await supabase
+      const { data: report, error: rErr } = await supabaseAdmin()
         .from('reports')
         .insert({
           client_id: client.id,
@@ -142,7 +138,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      await supabase
+      await supabaseAdmin()
         .from('reports')
         .update({ script, script_generated_at: new Date().toISOString() })
         .eq('id', report.id);
@@ -161,7 +157,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      await supabase
+      await supabaseAdmin()
         .from('reports')
         .update({ heygen_video_id: videoId, video_status: 'processing' })
         .eq('id', report.id);

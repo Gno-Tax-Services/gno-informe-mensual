@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { generateAvatarVideo, isHeygenConfigured } from '@/lib/heygen';
 
@@ -9,10 +9,6 @@ import { generateAvatarVideo, isHeygenConfigured } from '@/lib/heygen';
 export const maxDuration = 60;
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Dispara la generación del video HeyGen a partir del guion del informe.
 export async function POST(req: NextRequest) {
@@ -34,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'reportId es requerido' }, { status: 400 });
     }
 
-    const { data: report, error: rErr } = await supabase
+    const { data: report, error: rErr } = await supabaseAdmin()
       .from('reports')
       .select('id, periodo, script, client_id')
       .eq('id', reportId)
@@ -50,7 +46,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: client } = await supabase
+    const { data: client } = await supabaseAdmin()
       .from('clients')
       .select('nombre_compania')
       .eq('id', report.client_id)
@@ -69,7 +65,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { error: uErr } = await supabase
+    const { error: uErr } = await supabaseAdmin()
       .from('reports')
       .update({ heygen_video_id: videoId, video_status: 'processing' })
       .eq('id', reportId);

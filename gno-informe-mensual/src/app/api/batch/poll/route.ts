@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getVideoStatus, mapVideoStatus, isHeygenConfigured } from '@/lib/heygen';
 import { sendEmailViaGmail, isGmailSenderConfigured } from '@/lib/gmail';
 import { buildReportEmail, getEmailSubject } from '@/lib/email-template';
@@ -8,10 +8,6 @@ import crypto from 'crypto';
 export const maxDuration = 300;
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get('authorization')?.replace('Bearer ', '');
@@ -27,14 +23,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Fetch videos still processing in HeyGen
-  const { data: processing } = await supabase
+  const { data: processing } = await supabaseAdmin()
     .from('reports')
     .select('id, client_id, periodo, heygen_video_id, video_status, video_url')
     .eq('video_status', 'processing')
     .not('heygen_video_id', 'is', null);
 
   // Also fetch videos ready but emails held (dispatch date was in the future)
-  const { data: heldReady } = await supabase
+  const { data: heldReady } = await supabaseAdmin()
     .from('reports')
     .select('id, client_id, periodo, heygen_video_id, video_status, video_url')
     .eq('video_status', 'ready')
@@ -76,14 +72,14 @@ export async function POST(req: NextRequest) {
       }
 
       if (videoStatus === 'error') {
-        await supabase.from('reports').update({ video_status: 'error' }).eq('id', report.id);
+        await supabaseAdmin().from('reports').update({ video_status: 'error' }).eq('id', report.id);
         details.push({ client: report.client_id, status: 'video failed', error: heygen.error ?? undefined });
         errors++;
         continue;
       }
 
       videoUrl = heygen.url;
-      await supabase
+      await supabaseAdmin()
         .from('reports')
         .update({ video_status: 'ready', video_url: heygen.url })
         .eq('id', report.id);
@@ -100,7 +96,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch client info for email
-    const { data: client } = await supabase
+    const { data: client } = await supabaseAdmin()
       .from('clients')
       .select('*')
       .eq('id', report.client_id)
@@ -116,7 +112,7 @@ export async function POST(req: NextRequest) {
       // Generate magic token
       const magicToken = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-      await supabase
+      await supabaseAdmin()
         .from('reports')
         .update({ magic_token: magicToken, magic_token_expires_at: expiresAt.toISOString() })
         .eq('id', report.id);
@@ -128,7 +124,7 @@ export async function POST(req: NextRequest) {
         ? `[PRUEBA > ${client.email}] ${baseSubject}`
         : baseSubject;
 
-      const { data: emailLog } = await supabase.from('email_logs').insert({
+      const { data: emailLog } = await supabaseAdmin().from('email_logs').insert({
         client_id: client.id,
         report_id: report.id,
         to_email: recipient,
@@ -149,13 +145,13 @@ export async function POST(req: NextRequest) {
       await sendEmailViaGmail(recipient, subject, html);
 
       if (!client.primer_email_enviado) {
-        await supabase
+        await supabaseAdmin()
           .from('clients')
           .update({ primer_email_enviado: true })
           .eq('id', client.id);
       }
 
-      await supabase.from('reports').update({ status: 'sent' }).eq('id', report.id);
+      await supabaseAdmin().from('reports').update({ status: 'sent' }).eq('id', report.id);
 
       sent++;
       details.push({ client: client.nombre_compania, status: 'email sent' });
