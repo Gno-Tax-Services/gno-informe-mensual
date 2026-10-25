@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { findCompanyPnL, downloadPdfBase64, isDriveConfigured } from '@/lib/drive';
 import { extractFinancialsFromPdf } from '@/lib/extract-financials';
 import { generateNarrative, isNarrativeConfigured } from '@/lib/narrative';
-import { generateAvatarVideo, isHeygenConfigured } from '@/lib/heygen';
+import { generateAvatarVideo, isHeygenConfigured, getMonthlyAvatarId } from '@/lib/heygen';
 
 export const maxDuration = 300;
 export const runtime = 'nodejs';
@@ -143,12 +143,14 @@ export async function POST(req: NextRequest) {
         .update({ script, script_generated_at: new Date().toISOString() })
         .eq('id', report.id);
 
-      // 4. Trigger HeyGen video
+      // 4. Trigger HeyGen video (rotate avatar each month)
+      const monthlyAvatar = getMonthlyAvatarId(periodo);
       let videoId: string;
       try {
         videoId = await generateAvatarVideo(
           script,
-          `GNO ${client.nombre_compania} — ${periodo}`
+          `GNO ${client.nombre_compania} — ${periodo}`,
+          monthlyAvatar.id
         );
       } catch (e: any) {
         logEntry.status = 'error (video)';
@@ -171,8 +173,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const avatar = getMonthlyAvatarId(periodo);
   return NextResponse.json({
     periodo,
+    avatar: avatar.name,
     total: clients.length,
     results,
   });
