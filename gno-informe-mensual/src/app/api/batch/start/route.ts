@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 1b. Exclude high-margin companies if threshold is set
-      const excludeAboveMargin = parseFloat(process.env.GNO_EXCLUDE_ABOVE_MARGIN || '');
+      const excludeAboveMargin = parseFloat(process.env.GNO_EXCLUDE_ABOVE_MARGIN || '30');
       if (!isNaN(excludeAboveMargin) && metrics.profitMargin !== null && metrics.profitMargin > excludeAboveMargin) {
         logEntry.status = `excluded (margin ${metrics.profitMargin.toFixed(1)}% > ${excludeAboveMargin}%)`;
         results.push(logEntry);

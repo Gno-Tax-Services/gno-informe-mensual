@@ -89,14 +89,14 @@ export async function POST(req: NextRequest) {
         .eq('id', report.id);
     }
 
-    // Hold emails until dispatch date if configured
-    const dispatchDate = process.env.GNO_DISPATCH_DATE;
-    if (dispatchDate) {
-      const today = new Date().toISOString().split('T')[0];
-      if (today < dispatchDate) {
-        details.push({ client: report.client_id, status: `video ready (held until ${dispatchDate})` });
-        continue;
-      }
+    // Hold emails until dispatch date (env var, or auto-hold on the 25th to dispatch next day)
+    const today = new Date().toISOString().split('T')[0];
+    const dayOfMonth = new Date().getUTCDate();
+    const dispatchDate = process.env.GNO_DISPATCH_DATE
+      || (dayOfMonth === 25 ? today.replace(/-25$/, '-26') : '');
+    if (dispatchDate && today < dispatchDate) {
+      details.push({ client: report.client_id, status: `video ready (held until ${dispatchDate})` });
+      continue;
     }
 
     // Fetch client info for email
