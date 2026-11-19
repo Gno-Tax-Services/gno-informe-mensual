@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { createClient } from '@supabase/supabase-js';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import SignOutButton from './SignOutButton';
 import ReportActions from './ReportActions';
 import SyncClientsButton from './SyncClientsButton';
