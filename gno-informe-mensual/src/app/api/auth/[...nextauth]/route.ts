@@ -39,6 +39,8 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
   },
+  // Sesión de 8 horas (una jornada); se renueva con actividad cada hora.
+  session: { strategy: 'jwt', maxAge: 8 * 60 * 60, updateAge: 60 * 60 },
 };
 
 const handler = NextAuth(authOptions);
