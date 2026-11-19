@@ -7,7 +7,7 @@
 --  * Identificadores sensibles (EIN, cuentas LA/LWC) se guardan CIFRADOS
 --    desde la app (AES-256-GCM, src/lib/field-crypto.ts) + últimos 4 en claro.
 --    La llave vive solo en Vercel (FIELD_ENCRYPTION_KEY), nunca en la base.
---  * Documentos en bucket privado; se sirven con signed URLs de corta vida.
+--  * Los archivos viven en Google Drive; aquí solo se guarda la referencia.
 --  * Cada cambio queda en change_log (append-only).
 -- ─────────────────────────────────────────────────────────────
 
@@ -154,19 +154,23 @@ create table if not exists public.payroll_quarters (
   unique (client_id, anio, trimestre)
 );
 
--- ── Documentos (metadatos; el archivo vive en Storage privado) ──
+-- ── Documentos (solo referencia; el archivo vive en Google Drive) ──
 create table if not exists public.compliance_documents (
-  id            uuid primary key default gen_random_uuid(),
-  client_id     uuid not null references public.clients(id) on delete restrict,
-  entidad       text not null check (entidad in ('audit','sales_tax_period','payroll_quarter','client')),
-  entidad_id    uuid,
-  storage_path  text not null unique,     -- compliance-docs/<client_id>/<uuid>-<nombre>
-  nombre        text not null,
-  mime          text,
-  bytes         bigint check (bytes <= 52428800),
-  subido_por    text not null,
-  created_at    timestamptz not null default now(),
-  borrado_en    timestamptz                -- soft delete
+  id               uuid primary key default gen_random_uuid(),
+  client_id        uuid not null references public.clients(id) on delete restrict,
+  entidad          text not null check (entidad in ('audit','sales_tax_period','payroll_quarter','client')),
+  entidad_id       uuid,
+  drive_file_id    text not null unique,
+  drive_url        text not null,
+  drive_folder_id  text,
+  ubicacion        text,                     -- ruta legible: GNO Clients > Audits > AA LSU > WC 2025-2026
+  nombre           text not null,
+  mime             text,
+  bytes            bigint,
+  sha256           text,
+  subido_por       text not null,
+  created_at       timestamptz not null default now(),
+  borrado_en       timestamptz                -- soft delete
 );
 create index if not exists compliance_documents_entidad_idx on public.compliance_documents(entidad, entidad_id);
 
@@ -236,13 +240,3 @@ begin
     execute format('create trigger %I after insert or update or delete on public.%I for each row execute function public.log_change()', t||'_log', t);
   end loop;
 end $$;
-
--- ── Storage: bucket privado para documentos ───────────────────
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('compliance-docs', 'compliance-docs', false, 52428800,
-        array['application/pdf','image/png','image/jpeg','text/csv','text/plain',
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-              'application/vnd.ms-excel','application/zip'])
-on conflict (id) do update set public = false;
--- Sin policies en storage.objects para este bucket: solo service_role (que
--- ignora RLS) sube y firma URLs. anon/authenticated no pueden listar ni leer.
