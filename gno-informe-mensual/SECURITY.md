@@ -15,3 +15,25 @@
 
 ## Rotación
 Si una llave se filtra: rotar `SUPABASE_SERVICE_ROLE_KEY` en Supabase → Settings → API, actualizar Vercel y redeploy.
+
+## SSN, ITIN, ATIN y EIN (migración 0012)
+- Se guardan en `identificadores`, cifrados con AES-256-GCM (`valor_enc`). En pantallas, APIs, reportes y bitácora solo aparecen los **últimos 4** (`•••-••-1234`, `••-•••1234`).
+- `huella` (HMAC-SHA256 con `FIELD_HMAC_KEY`) detecta un número repetido sin descifrarlo, incluso entre clientes.
+- Validación de formato antes de cifrar: reglas SSA para SSN, rangos del IRS para ITIN/ATIN, prefijos válidos de EIN.
+- **Revelar** el número completo: solo rol admin, motivo obligatorio, máximo 10 por hora por usuario, registro `VIEW_SENSITIVE` en `change_log` antes de mostrarlo, respuesta `no-store`, se oculta sola a los 30 s o al cambiar de pestaña.
+- **DLP en la base de datos**: triggers rechazan patrones de SSN/ITIN/EIN escritos en claro en notas, nombres de archivo, ubicación, confirmaciones, etc.
+- Errores de la API nunca reenvían el detalle de Postgres.
+- Rotación de llaves: `FIELD_ENCRYPTION_KEY_V2` cifra lo nuevo; lo viejo se sigue leyendo con v1 (`needsReencrypt` marca qué re-cifrar).
+
+## Navegador y sesión
+- Headers: HSTS, `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`; `/admin` y `/api/compliance` con `no-store` y `noindex`.
+- Sesión NextAuth de 8 horas.
+- El build falla si hay errores de TypeScript.
+
+## Llaves (Vercel → Environment Variables, solo Production)
+| Variable | Uso |
+|---|---|
+| `FIELD_ENCRYPTION_KEY` | cifrado v1 (`openssl rand -base64 32`) |
+| `FIELD_HMAC_KEY` | huella; distinta a la de cifrado (`openssl rand -base64 32`) |
+| `FIELD_ENCRYPTION_KEY_V2` | solo al rotar |
+Guardar copia de las llaves fuera de Vercel (gestor de contraseñas). Sin la llave, los datos cifrados no se recuperan.
