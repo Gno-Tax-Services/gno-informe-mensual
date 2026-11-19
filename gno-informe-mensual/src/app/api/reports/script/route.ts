@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { generateNarrative, isNarrativeConfigured } from '@/lib/narrative';
 
 // La generación con Claude puede tardar; damos margen a la función serverless.
