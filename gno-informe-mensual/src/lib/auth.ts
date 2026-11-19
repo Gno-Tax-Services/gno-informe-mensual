@@ -1,5 +1,7 @@
 import type { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { DEMO_EMAIL, demoCredentialsOk, isDemoDatabase, isDemoMode } from '@/lib/demo';
 
 // Correos autorizados a entrar al portal de administración.
 // Configurable en Vercel con GNO_ALLOWED_EMAILS (separados por coma).
@@ -13,7 +15,22 @@ const ALLOWED_EMAILS = (
   .filter(Boolean);
 
 export const authOptions: NextAuthOptions = {
-  providers: [
+  // En modo DEMO solo existe el login demo (sin Google); en producción, solo Google.
+  providers: isDemoMode()
+    ? [
+        CredentialsProvider({
+          id: 'demo',
+          name: 'Demo',
+          credentials: { username: { label: 'Usuario' }, password: { label: 'Contraseña', type: 'password' } },
+          async authorize(c) {
+            if (!c?.username || !c?.password) return null;
+            if (!demoCredentialsOk(c.username, c.password)) return null;
+            if (!(await isDemoDatabase())) return null; // nunca contra la base real
+            return { id: 'demo', name: 'Invitado Demo', email: DEMO_EMAIL };
+          },
+        }),
+      ]
+    : [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -29,6 +46,7 @@ export const authOptions: NextAuthOptions = {
     // Restringe el acceso a la allowlist de correos GNO.
     async signIn({ user }) {
       const email = user.email?.toLowerCase();
+      if (isDemoMode()) return email === DEMO_EMAIL;
       return !!email && ALLOWED_EMAILS.includes(email);
     },
     // Expone el correo en la sesión (ya viene por defecto).

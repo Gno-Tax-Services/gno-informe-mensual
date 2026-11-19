@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 // Mensajes de error legibles según el código que NextAuth agrega a la URL.
@@ -9,6 +9,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   OAuthSignin: 'No se pudo iniciar el flujo de Google. Intenta de nuevo.',
   OAuthCallback: 'Google rechazó la respuesta de autenticación. Intenta de nuevo.',
   AccessDenied: 'Acceso denegado. Tu cuenta no está autorizada para este portal.',
+  CredentialsSignin: 'Usuario o contraseña incorrectos.',
   Configuration: 'Error de configuración del servidor. Contacta al administrador.',
 };
 
@@ -17,6 +18,23 @@ function LoginContent() {
   const error = params.get('error');
   const callbackUrl = params.get('callbackUrl') || '/admin';
   const [loading, setLoading] = useState(false);
+  const [demo, setDemo] = useState(false);
+  const [verPass, setVerPass] = useState(false);
+
+  // Si el servidor solo ofrece el login demo, se muestra usuario y contraseña.
+  useEffect(() => {
+    import('next-auth/react').then(({ getProviders }) =>
+      getProviders().then((p) => setDemo(!!p?.demo && !p?.google)),
+    );
+  }, []);
+
+  async function handleDemo(ev: React.FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    setLoading(true);
+    const f = new FormData(ev.currentTarget);
+    const { signIn } = await import('next-auth/react');
+    signIn('demo', { username: f.get('username'), password: f.get('password'), callbackUrl: '/admin/cumplimiento' });
+  }
 
   // Import dinámico: next-auth/react solo se carga en el navegador al hacer
   // clic, así NO se evalúa durante el prerender del build (evita el
@@ -53,6 +71,21 @@ function LoginContent() {
             </div>
           )}
 
+          {demo ? (
+            <form onSubmit={handleDemo} className="space-y-3">
+              <input name="username" required autoComplete="username" placeholder="Usuario"
+                className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-[#7FA3C4]" />
+              <div className="relative">
+                <input name="password" required type={verPass ? 'text' : 'password'} autoComplete="current-password" placeholder="Contraseña"
+                  className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 pr-16 text-sm text-white placeholder:text-[#7FA3C4]" />
+                <button type="button" onClick={() => setVerPass((v) => !v)}
+                  className="absolute inset-y-0 right-2 text-xs text-[#7FA3C4]">{verPass ? 'Ocultar' : 'Ver'}</button>
+              </div>
+              <button disabled={loading} className="w-full rounded-lg bg-gold px-4 py-3 text-sm font-medium text-navy disabled:opacity-60">
+                {loading ? 'Entrando…' : 'Entrar a la demo'}
+              </button>
+            </form>
+          ) : (
           <button
             type="button"
             onClick={handleGoogle}
@@ -62,9 +95,10 @@ function LoginContent() {
             <GoogleIcon />
             {loading ? 'Conectando…' : 'Continuar con Google'}
           </button>
+          )}
 
           <p className="mt-4 text-center text-xs text-[#7FA3C4]">
-            Solo personal autorizado de GNO Tax &amp; Business Center.
+            {demo ? 'Demo con datos ficticios · solo lectura' : 'Solo personal autorizado de GNO Tax & Business Center.'}
           </p>
         </div>
       </div>

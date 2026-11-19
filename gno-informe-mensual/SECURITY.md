@@ -37,3 +37,10 @@ Si una llave se filtra: rotar `SUPABASE_SERVICE_ROLE_KEY` en Supabase → Settin
 | `FIELD_HMAC_KEY` | huella; distinta a la de cifrado (`openssl rand -base64 32`) |
 | `FIELD_ENCRYPTION_KEY_V2` | solo al rotar |
 Guardar copia de las llaves fuera de Vercel (gestor de contraseñas). Sin la llave, los datos cifrados no se recuperan.
+
+## Instancia DEMO
+- Se publica como **otro proyecto de Vercel** (mismo repo) con `GNO_DEMO_MODE=1`, conectado a **otro proyecto de Supabase** con `supabase/seed/demo.sql` (datos ficticios).
+- Tres candados: `GNO_DEMO_MODE=1`, `DEMO_PASSWORD` de 12+ caracteres y la tabla `demo_instance` (solo existe en la base demo). Contra la base real el login demo siempre falla.
+- En demo no existe el login de Google; el usuario demo es `viewer` (solo lectura).
+- El middleware bloquea toda escritura en `/api/*`, los crons, SMS, emails, videos, Drive y los identificadores.
+- Banner "DEMO · Datos ficticios · Solo lectura" en todas las páginas.
