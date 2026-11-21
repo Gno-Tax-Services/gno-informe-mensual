@@ -200,7 +200,13 @@ export default async function AdminPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right align-top">
-                    <div className="flex justify-end">
+                    <div className="flex items-center justify-end gap-3">
+                      <a
+                        href={`/admin/clientes/${c.id}/contabilidad`}
+                        className="whitespace-nowrap rounded-md border border-white/20 px-3 py-1.5 text-xs text-[#B9CBDD] hover:bg-white/5 hover:text-white"
+                      >
+                        Contabilidad
+                      </a>
                       <ReportActions clientId={c.id} compania={c.nombre_compania} />
                     </div>
                   </td>

@@ -79,3 +79,106 @@ insert into public.identificadores (client_id, persona_id, tipo, valor_enc, last
   ('d0000000-0000-4000-8000-000000000004','d1000000-0000-4000-8000-000000000002','SSN','v1.REVNTw==.REVNTw==.REVNTw==','0002',md5('demo-ssn-2')||md5('x2'),'demo@demo.gno'),
   ('d0000000-0000-4000-8000-000000000004',null,'EIN','v1.REVNTw==.REVNTw==.REVNTw==','0003',md5('demo-ein-3')||md5('x3'),'demo@demo.gno')
 on conflict do nothing;
+
+-- ─────────────────────────────────────────────────────────────
+-- Módulo Entidad y Equity (0013): casos 2 a 5 de la spec, todo ficticio.
+-- Los ids deben coincidir con src/lib/entity/demo-cases.ts.
+--   caso 2: sole proprietor            (d0…0007)
+--   caso 3: LLC un miembro → S-corp    (d0…0008)  elige S-corp el 01/01/2026, capital previo $20,000
+--   caso 4: S-corp 60/40               (d0…0009)  distribuciones 50/50
+--   caso 5: partnership 50/50 → 70/30  (d0…0010)  cambio el 01/07/2026
+-- El caso 1 (piloto real) NO va en la demo.
+-- ─────────────────────────────────────────────────────────────
+insert into public.clients (id, nombre_dueno, nombre_compania, email, telefono, idioma, industria, activo) values
+  ('d0000000-0000-4000-8000-000000000007','Marie Delacroix','Magnolia Lawn Care (sole prop)','marie@example.com','504-555-0107','espanol','landscaping',true),
+  ('d0000000-0000-4000-8000-000000000008','Theo Broussard','Bayou Print Studio LLC','theo@example.com','504-555-0108','english','printing',true),
+  ('d0000000-0000-4000-8000-000000000009','Lena Fontenot','Crescent Design Group Inc','lena@example.com','985-555-0109','espanol','design',true),
+  ('d0000000-0000-4000-8000-000000000010','Nora Thibodeaux','Cypress Home Partners LLC','nora@example.com','504-555-0110','english','home services',true)
+on conflict (id) do nothing;
+
+insert into public.personas (id, client_id, nombre, rol, updated_by) values
+  ('d1000000-0000-4000-8000-000000000007','d0000000-0000-4000-8000-000000000007','Marie Delacroix','owner','demo@demo.gno'),
+  ('d1000000-0000-4000-8000-000000000008','d0000000-0000-4000-8000-000000000008','Theo Broussard','owner','demo@demo.gno'),
+  ('d1000000-0000-4000-8000-000000000009','d0000000-0000-4000-8000-000000000009','Lena Fontenot','owner','demo@demo.gno'),
+  ('d1000000-0000-4000-8000-000000000010','d0000000-0000-4000-8000-000000000009','Marcus Guidry','owner','demo@demo.gno'),
+  ('d1000000-0000-4000-8000-000000000011','d0000000-0000-4000-8000-000000000010','Nora Thibodeaux','owner','demo@demo.gno'),
+  ('d1000000-0000-4000-8000-000000000012','d0000000-0000-4000-8000-000000000010','Remy Landry','owner','demo@demo.gno')
+on conflict (id) do nothing;
+
+-- Identificadores ficticios (valor cifrado = marcador; solo los últimos 4 se muestran, enmascarados)
+insert into public.identificadores (client_id, persona_id, tipo, valor_enc, last4, huella, updated_by) values
+  ('d0000000-0000-4000-8000-000000000007','d1000000-0000-4000-8000-000000000007','SSN', 'v1.REVNTw==.REVNTw==.REVNTw==','0107',md5('demo-ssn-107')||md5('z107'),'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000008','d1000000-0000-4000-8000-000000000008','ITIN','v1.REVNTw==.REVNTw==.REVNTw==','0108',md5('demo-itin-108')||md5('z108'),'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000009','d1000000-0000-4000-8000-000000000009','SSN', 'v1.REVNTw==.REVNTw==.REVNTw==','0109',md5('demo-ssn-109')||md5('z109'),'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000009','d1000000-0000-4000-8000-000000000010','SSN', 'v1.REVNTw==.REVNTw==.REVNTw==','0110',md5('demo-ssn-110')||md5('z110'),'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000010','d1000000-0000-4000-8000-000000000011','ITIN','v1.REVNTw==.REVNTw==.REVNTw==','0111',md5('demo-itin-111')||md5('z111'),'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000010','d1000000-0000-4000-8000-000000000012','SSN', 'v1.REVNTw==.REVNTw==.REVNTw==','0112',md5('demo-ssn-112')||md5('z112'),'demo@demo.gno')
+on conflict do nothing;
+
+insert into public.entity_profile (client_id, legal_form, state_of_formation, formation_date, fiscal_year_end, ein_last4, updated_by) values
+  ('d0000000-0000-4000-8000-000000000007','sole_prop','LA','2021-03-01','12-31',null,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000008','llc_single','LA','2022-05-15','12-31','0108','demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000009','corporation','LA','2019-09-01','12-31','0109','demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000010','llc_multi','LA','2020-02-01','12-31','0110','demo@demo.gno')
+on conflict (client_id) do nothing;
+
+insert into public.tax_classification (client_id, classification, effective_date, election_form, election_doc, updated_by) values
+  ('d0000000-0000-4000-8000-000000000007','disregarded','2021-03-01','none',null,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000008','disregarded','2022-05-15','none',null,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000008','s_corp','2026-01-01','2553','GNO Clients > Bayou Print Studio > Entity > Carta IRS CP261.pdf','demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000009','s_corp','2019-09-01','2553','GNO Clients > Crescent Design > Entity > Carta IRS CP261.pdf','demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000010','partnership','2020-02-01','none',null,'demo@demo.gno')
+on conflict (client_id, effective_date) do nothing;
+
+-- Dueños (caso 3: oficial; caso 4: 60/40; caso 5: tramos 50/50 hasta el 30/06 y 70/30 desde el 01/07)
+insert into public.owners (client_id, persona_id, role, holder_type, ownership_pct, start_date, end_date, is_officer, updated_by) values
+  ('d0000000-0000-4000-8000-000000000007','d1000000-0000-4000-8000-000000000007','owner','individual',100,'2021-03-01',null,false,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000008','d1000000-0000-4000-8000-000000000008','member','individual',100,'2022-05-15',null,true,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000009','d1000000-0000-4000-8000-000000000009','shareholder','individual',60,'2019-09-01',null,true,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000009','d1000000-0000-4000-8000-000000000010','shareholder','individual',40,'2019-09-01',null,false,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000010','d1000000-0000-4000-8000-000000000011','partner','individual',50,'2020-02-01','2026-06-30',false,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000010','d1000000-0000-4000-8000-000000000012','partner','individual',50,'2020-02-01','2026-06-30',false,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000010','d1000000-0000-4000-8000-000000000011','partner','individual',70,'2026-07-01',null,false,'demo@demo.gno'),
+  ('d0000000-0000-4000-8000-000000000010','d1000000-0000-4000-8000-000000000012','partner','individual',30,'2026-07-01',null,false,'demo@demo.gno')
+on conflict (client_id, persona_id, start_date) do nothing;
+
+-- Nómina 2026 del caso 4 (la S-corp 60/40 sí paga sueldo al oficial → sin alerta de sueldo razonable).
+-- El caso 3 NO tiene nómina a propósito: debe disparar la alerta.
+insert into public.payroll_quarters (client_id, anio, trimestre, empleados, salarios, estatus) values
+  ('d0000000-0000-4000-8000-000000000009',2026,1,1,20000.00,'filed'),
+  ('d0000000-0000-4000-8000-000000000009',2026,2,1,20000.00,'filed'),
+  ('d0000000-0000-4000-8000-000000000009',2026,3,1,20000.00,'filed')
+on conflict (client_id, anio, trimestre) do nothing;
+
+-- Saldos iniciales al 31/12/2025 (cuadran: activos − pasivos − capital = 0)
+insert into public.opening_balances (client_id, as_of, account_code, account_name, owner_id, amount, source, updated_by)
+select v.client_id, '2025-12-31', v.code, v.name,
+       (select o.id from public.owners o where o.client_id = v.client_id and o.persona_id = v.persona and o.start_date <= '2025-12-31'
+         order by o.start_date desc limit 1),
+       v.amount, 'GNO', 'demo@demo.gno'
+from (values
+  ('d0000000-0000-4000-8000-000000000007'::uuid, '10100', 'Demo Bank Operating',   null::uuid,                                        10000.00),
+  ('d0000000-0000-4000-8000-000000000007'::uuid, '30000', 'Owner''s Capital',       null::uuid,                                        10000.00),
+  ('d0000000-0000-4000-8000-000000000008'::uuid, '10100', 'Demo Bank Operating',   null::uuid,                                        20000.00),
+  ('d0000000-0000-4000-8000-000000000008'::uuid, '30000', 'Owner''s Capital',       null::uuid,                                        20000.00),
+  ('d0000000-0000-4000-8000-000000000009'::uuid, '10100', 'Demo Bank Operating',   null::uuid,                                        30000.00),
+  ('d0000000-0000-4000-8000-000000000009'::uuid, '31000', 'Common Stock',          'd1000000-0000-4000-8000-000000000009'::uuid,      18000.00),
+  ('d0000000-0000-4000-8000-000000000009'::uuid, '31000', 'Common Stock',          'd1000000-0000-4000-8000-000000000010'::uuid,      12000.00),
+  ('d0000000-0000-4000-8000-000000000010'::uuid, '10100', 'Demo Bank Operating',   null::uuid,                                        50000.00),
+  ('d0000000-0000-4000-8000-000000000010'::uuid, '30100', 'Partner Capital',       'd1000000-0000-4000-8000-000000000011'::uuid,      25000.00),
+  ('d0000000-0000-4000-8000-000000000010'::uuid, '30101', 'Partner Capital',       'd1000000-0000-4000-8000-000000000012'::uuid,      25000.00)
+) as v(client_id, code, name, persona, amount)
+where not exists (select 1 from public.opening_balances b where b.client_id = v.client_id);
+
+-- Catálogo de Equity y alta confirmada para los cuatro clientes demo (idempotente)
+do $$
+declare c uuid;
+begin
+  foreach c in array array[
+    'd0000000-0000-4000-8000-000000000007','d0000000-0000-4000-8000-000000000008',
+    'd0000000-0000-4000-8000-000000000009','d0000000-0000-4000-8000-000000000010']::uuid[] loop
+    if not exists (select 1 from public.entity_profile e where e.client_id = c and e.setup_completed_at is not null) then
+      perform public.entity_complete_setup(c, 'demo@demo.gno');
+    end if;
+  end loop;
+end $$;
